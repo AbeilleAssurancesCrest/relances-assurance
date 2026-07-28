@@ -17,7 +17,9 @@ def init_db():
     pass
 
 def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_contrats):
-    if not SUPABASE_KEY: return
+    if not SUPABASE_KEY:
+        print("ERREUR : SUPABASE_KEY est vide !")
+        return
     
     url_client = f"{SUPABASE_URL}/rest/v1/clients"
     payload_client = {
@@ -29,31 +31,40 @@ def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_c
         "statut": "En attente"
     }
     r = requests.post(url_client, headers=get_headers(), json=payload_client)
+    print("REPONSE SUPABASE CLIENT:", r.status_code, r.text)
+    
     if r.status_code in [200, 201]:
         res = r.json()
-        client_id = res[0]['id']
-        
-        url_contrat = f"{SUPABASE_URL}/rest/v1/contrats"
-        for c in liste_contrats:
-            pieces_json = json.dumps(c.get('pieces', []))
-            payload_contrat = {
-                "client_id": client_id,
-                "num_contrat": c['num_contrat'],
-                "type_vehicule": c.get('type_vehicule', 'Voiture'),
-                "date_effet": c['date_effet'],
-                "marque": c.get('marque', ''),
-                "immat": c.get('immat', ''),
-                "pieces_manquantes": pieces_json,
-                "pieces_initiales": pieces_json
-            }
-            requests.post(url_contrat, headers=get_headers(), json=payload_contrat)
+        if res and len(res) > 0:
+            client_id = res[0]['id']
+            
+            url_contrat = f"{SUPABASE_URL}/rest/v1/contrats"
+            for c in liste_contrats:
+                pieces_json = json.dumps(c.get('pieces', []))
+                payload_contrat = {
+                    "client_id": client_id,
+                    "num_contrat": c['num_contrat'],
+                    "type_vehicule": c.get('type_vehicule', 'Voiture'),
+                    "date_effet": c['date_effet'],
+                    "marque": c.get('marque', ''),
+                    "immat": c.get('immat', ''),
+                    "pieces_manquantes": pieces_json,
+                    "pieces_initiales": pieces_json
+                }
+                rc = requests.post(url_contrat, headers=get_headers(), json=payload_contrat)
+                print("REPONSE SUPABASE CONTRAT:", rc.status_code, rc.text)
+    else:
+        raise Exception(f"Erreur Supabase {r.status_code}: {r.text}")
 
 def get_all_clients():
-    if not SUPABASE_KEY: return []
+    if not SUPABASE_KEY:
+        return []
     
     url_clients = f"{SUPABASE_URL}/rest/v1/clients?select=*&order=id.desc"
     r = requests.get(url_clients, headers=get_headers())
-    if r.status_code != 200: return []
+    if r.status_code != 200:
+        print("ERREUR GET CLIENTS:", r.status_code, r.text)
+        return []
     
     clients = r.json()
     
