@@ -11,7 +11,6 @@ from database import (init_db, add_client_avec_contrats, get_all_clients,
 app = FastAPI()
 init_db()
 
-# Autoriser toutes les origines pour le partage en réseau local
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,7 +58,7 @@ class CommentaireUpdateSchema(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.get("/api/dossiers")
 def fetch_dossiers():
