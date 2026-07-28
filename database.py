@@ -1,43 +1,48 @@
 import sqlite3
-from datetime import datetime
+import json
+import os
 
-DB_NAME = "database.db"
+DB_PATH = "database.db"
+
+def get_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    if not os.path.exists(DB_PATH):
+        open(DB_PATH, 'a').close()
+        
+    conn = get_connection()
     cursor = conn.cursor()
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom TEXT,
-            prenom TEXT,
+            nom TEXT NOT NULL,
+            prenom TEXT NOT NULL,
             email TEXT,
             telephone TEXT,
-            commentaire TEXT,
-            statut TEXT DEFAULT 'En attente'
+            statut TEXT DEFAULT 'En attente',
+            derniere_relance TEXT,
+            commentaire TEXT
         )
     ''')
-
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS contrats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             client_id INTEGER,
-            num_contrat TEXT,
+            num_contrat TEXT NOT NULL,
             type_vehicule TEXT,
             date_effet TEXT,
-            marque_vehicule TEXT,
-            immatriculation TEXT,
+            marque TEXT,
+            immat TEXT,
             pieces_manquantes TEXT,
             pieces_initiales TEXT,
-            FOREIGN KEY (client_id) REFERENCES clients (id)
+            FOREIGN KEY(client_id) REFERENCES clients(id) ON DELETE CASCADE
         )
     ''')
-
-    cursor.execute("PRAGMA table_info(contrats)")
-    columns = [column[1] for column in cursor.fetchall()]
-    if 'type_vehicule' not in columns:
-        cursor.execute("ALTER TABLE contrats ADD COLUMN type_vehicule TEXT")
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS historique (
@@ -46,7 +51,7 @@ def init_db():
             date_heure TEXT,
             email TEXT,
             pieces TEXT,
-            FOREIGN KEY (client_id) REFERENCES clients (id)
+            FOREIGN KEY(client_id) REFERENCES clients(id) ON DELETE CASCADE
         )
     ''')
 
@@ -54,164 +59,133 @@ def init_db():
     conn.close()
 
 def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_contrats):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection()
     cursor = conn.cursor()
-    nom_formatted = nom.strip().upper()
-    prenom_formatted = prenom.strip().capitalize()
-
     cursor.execute('''
-        INSERT INTO clients (nom, prenom, email, telephone, commentaire)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (nom_formatted, prenom_formatted, email, telephone, commentaire))
-    
+        INSERT INTO clients (nom, prenom, email, telephone, commentaire, statut)
+        VALUES (?, ?, ?, ?, ?, 'En attente')
+    ''', (nom, prenom, email, telephone, commentaire))
     client_id = cursor.lastrowid
 
     for c in liste_contrats:
-        pieces_str = ",".join(c.get('pieces', []))
+        pieces_json = json.dumps(c.get('pieces', []))
         cursor.execute('''
-            INSERT INTO contrats (client_id, num_contrat, type_vehicule, date_effet, marque_vehicule, immatriculation, pieces_manquantes, pieces_initiales)
+            INSERT INTO contrats (client_id, num_contrat, type_vehicule, date_effet, marque, immat, pieces_manquantes, pieces_initiales)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (client_id, c.get('num_contrat'), c.get('type_vehicule'), c.get('date_effet'), c.get('marque'), c.get('immat'), pieces_str, pieces_str))
+        ''', (client_id, c['num_contrat'], c.get('type_vehicule', 'Voiture'), c['date_effet'], c.get('marque', ''), c.get('immat', ''), pieces_json, pieces_json))
 
     conn.commit()
     conn.close()
 
-def get_all_clients():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM clients')
-    rows = cursor.fetchall()
-
-    resultat = []
-    maintenant = datetime.now()
-
-    for r in rows:
-        client_id, nom, prenom, email, tel, commentaire, statut = r[0], r[1], r[2], r[3], r[4], r[5], r[6]
-        
-        cursor.execute('SELECT id, num_contrat, type_vehicule, date_effet, marque_vehicule, immatriculation, pieces_manquantes, pieces_initiales FROM contrats WHERE client_id = ?', (client_id,))
-        contrats_rows = cursor.fetchall()
-        
-        contrats = []
-        for c in contrats_rows:
-            contrats.append({
-                "id": c[0],
-                "num_contrat": c[1],
-                "type_vehicule": c[2] or 'Voiture',
-                "date_effet": c[3],
-                "marque": c[4] or '',
-                "immat": c[5] or '',
-                "pieces_manquantes": c[6].split(',') if c[6] else [],
-                "pieces_initiales": c[7].split(',') if c[7] else []
-            })
-
-        cursor.execute('SELECT date_heure FROM historique WHERE client_id = ? ORDER BY id DESC LIMIT 1', (client_id,))
-        last_relance = cursor.fetchone()
-        derniere_relance = last_relance[0] if last_relance else None
-
-        niveau_urgence = 'neutre'
-        texte_statut = 'En attente'
-
-        if statut == 'Archivé':
-            texte_statut = '📦 Archivé'
-            niveau_urgence = 'archive'
-        elif derniere_relance:
-            try:
-                date_r = datetime.strptime(derniere_relance, '%Y-%m-%d %H:%M:%S')
-                jours_ecoules = (maintenant - date_r).days
-                if jours_ecoules < 7:
-                    texte_statut = 'Relance < 7j'
-                    niveau_urgence = 'vert'
-                elif 7 <= jours_ecoules < 14:
-                    texte_statut = 'Relance > 7j'
-                    niveau_urgence = 'orange'
-                else:
-                    texte_statut = 'Urgent à relancer'
-                    niveau_urgence = 'rouge'
-            except Exception:
-                pass
-        else:
-            dates_eff = [c['date_effet'] for c in contrats if c['date_effet']]
-            if dates_eff:
-                min_date = min(dates_eff)
-                try:
-                    date_e = datetime.strptime(min_date, '%Y-%m-%d')
-                    if (maintenant - date_e).days >= 7:
-                        texte_statut = 'Urgent à relancer'
-                        niveau_urgence = 'rouge'
-                    else:
-                        texte_statut = 'À relancer'
-                        niveau_urgence = 'orange'
-                except Exception:
-                    pass
-
-        resultat.append({
-            "id": client_id,
-            "nom": nom,
-            "prenom": prenom,
-            "email": email or '',
-            "telephone": tel or '',
-            "commentaire": commentaire or '',
-            "statut": statut,
-            "texte_statut": texte_statut,
-            "niveau_urgence": niveau_urgence,
-            "derniere_relance": derniere_relance,
-            "contrats": contrats
-        })
-
-    conn.close()
-    return resultat
-
 def update_contrat_details(contrat_id, immat, pieces):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection()
     cursor = conn.cursor()
-    pieces_str = ",".join(pieces)
+    pieces_json = json.dumps(pieces)
     cursor.execute('''
         UPDATE contrats 
-        SET immatriculation = ?, pieces_manquantes = ?
+        SET immat = ?, pieces_manquantes = ?
         WHERE id = ?
-    ''', (immat, pieces_str, contrat_id))
+    ''', (immat, pieces_json, contrat_id))
     conn.commit()
     conn.close()
 
 def update_commentaire(client_id, commentaire):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('UPDATE clients SET commentaire = ? WHERE id = ?', (commentaire, client_id))
     conn.commit()
     conn.close()
 
-def log_relance(client_id, email, pieces):
-    conn = sqlite3.connect(DB_NAME)
+def get_all_clients():
+    conn = get_connection()
     cursor = conn.cursor()
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    pieces_str = ",".join(pieces)
-    cursor.execute('''
-        INSERT INTO historique (client_id, date_heure, email, pieces)
-        VALUES (?, ?, ?, ?)
-    ''', (client_id, now_str, email, pieces_str))
-    conn.commit()
-    conn.close()
+    cursor.execute('SELECT * FROM clients ORDER BY id DESC')
+    clients = [dict(row) for row in cursor.fetchall()]
 
-def get_historique(client_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('SELECT date_heure, email, pieces FROM historique WHERE client_id = ? ORDER BY id DESC', (client_id,))
-    rows = cursor.fetchall()
+    for cl in clients:
+        cursor.execute('SELECT * FROM contrats WHERE client_id = ?', (cl['id'],))
+        contrats_db = cursor.fetchall()
+        
+        contrats_list = []
+        dossier_complet = True
+        nb_jours_max = 0
+
+        for c in contrats_db:
+            c_dict = dict(c)
+            c_dict['pieces_manquantes'] = json.loads(c_dict['pieces_manquantes']) if c_dict['pieces_manquantes'] else []
+            c_dict['pieces_initiales'] = json.loads(c_dict['pieces_initiales']) if c_dict['pieces_initiales'] else []
+            contrats_list.append(c_dict)
+
+            if len(c_dict['pieces_manquantes']) > 0:
+                dossier_complet = False
+
+            if c_dict.get('date_effet'):
+                from datetime import datetime
+                try:
+                    d_effet = datetime.strptime(c_dict['date_effet'], '%Y-%m-%d')
+                    delta = (datetime.now() - d_effet).days
+                    if delta > nb_jours_max:
+                        nb_jours_max = delta
+                except:
+                    pass
+
+        cl['contrats'] = contrats_list
+
+        if cl['statut'] == 'Archivé':
+            cl['niveau_urgence'] = 'archive'
+            cl['texte_statut'] = 'Archivé'
+        elif dossier_complet:
+            cl['niveau_urgence'] = 'vert'
+            cl['texte_statut'] = 'Complet (Prêt à archiver)'
+        elif nb_jours_max >= 15:
+            cl['niveau_urgence'] = 'rouge'
+            cl['texte_statut'] = f'Urgent ({nb_jours_max} jrs)'
+        elif nb_jours_max >= 7:
+            cl['niveau_urgence'] = 'orange'
+            cl['texte_statut'] = f'Relance requise ({nb_jours_max} jrs)'
+        else:
+            cl['niveau_urgence'] = 'vert'
+            cl['texte_statut'] = f'En cours ({nb_jours_max} jrs)'
+
     conn.close()
-    return [{"date_heure": r[0], "email": r[1], "pieces": r[2].split(',')} for r in rows]
+    return clients
 
 def update_statut(client_id, statut):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('UPDATE clients SET statut = ? WHERE id = ?', (statut, client_id))
     conn.commit()
     conn.close()
 
 def delete_client(client_id):
-    conn = sqlite3.connect(DB_NAME)
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
-    cursor.execute('DELETE FROM contrats WHERE client_id = ?', (client_id,))
-    cursor.execute('DELETE FROM historique WHERE client_id = ?', (client_id,))
     conn.commit()
     conn.close()
+
+def log_relance(client_id, email, pieces):
+    from datetime import datetime
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cursor.execute('UPDATE clients SET derniere_relance = ? WHERE id = ?', (now, client_id))
+    cursor.execute('''
+        INSERT INTO historique (client_id, date_heure, email, pieces)
+        VALUES (?, ?, ?, ?)
+    ''', (client_id, now, email, json.dumps(pieces)))
+    conn.commit()
+    conn.close()
+
+def get_historique(client_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM historique WHERE client_id = ? ORDER BY id DESC', (client_id,))
+    rows = cursor.fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d['pieces'] = json.loads(d['pieces']) if d['pieces'] else []
+        result.append(d)
+    conn.close()
+    return result
