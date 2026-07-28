@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestionnaire de Relances Assurances</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .alerte-rouge { background-color: #f8d7da !important; }
+        .badge-piece { margin-right: 4px; margin-bottom: 4px; display: inline-block; }
+        .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; }
+    </style>
+</head>
+<body class="bg-light p-4">
+<div class="container-fluid">
+    
+    <!-- En-tête -->
+    <div class="p-4 mb-4 rounded-3 header-bg shadow-sm d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">🛡️ Gestion & Suivi des Pièces Client</h1>
+            <p class="mb-0 opacity-75">Outil de relance automatique et de preuve d'audit</p>
+        </div>
+    </div>
+
+    <!-- Formulaire d'ajout -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-header bg-primary text-white fw-bold">➕ Nouveau Dossier Client</div>
+        <div class="card-body">
+            <form id="formClient" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">N° Contrat / Sociétaire</label>
+                    <input type="text" id="num_contrat" class="form-control" placeholder="ex: 8549201">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Nom</label>
+                    <input type="text" id="nom" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Prénom</label>
+                    <input type="text" id="prenom" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Email</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Date d'effet</label>
+                    <input type="date" id="date_effet" class="form-control" required>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold text-danger">📋 Pièces Manquantes :</label>
+                    <div class="row g-2" id="listePieces">
+                        <div class="col-md-4"><input type="checkbox" value="Permis de conduire"> Permis de conduire</div>
+                        <div class="col-md-4"><input type="checkbox" value="Permis du/de la conjoint/e"> Permis conjoint/e</div>
+                        <div class="col-md-4"><input type="checkbox" value="Permis définitif (Jeune permis)"> Permis définitif</div>
+                        <div class="col-md-4"><input type="checkbox" value="Carte grise"> Carte grise</div>
+                        <div class="col-md-4"><input type="checkbox" value="Carte grise barrée + Certificat de cession"> Carte grise barrée + Cession</div>
+                        <div class="col-md-4"><input type="checkbox" value="Relevé d'information 24 mois"> Relevé d'info (24 mois)</div>
+                        <div class="col-md-4"><input type="checkbox" value="Contrat signé"> Contrat signé</div>
+                        <div class="col-md-4"><input type="checkbox" value="Kilométrage de la voiture"> Kilométrage véhicule</div>
+                        <div class="col-md-4"><input type="checkbox" value="Facture d'antivol"> Facture antivol</div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold">Commentaire / Remarques</label>
+                    <textarea id="commentaire" class="form-control" rows="2" placeholder="Particularités du dossier..."></textarea>
+                </div>
+
+                <div class="col-12 text-end">
+                    <button type="button" onclick="ajouterDossier()" class="btn btn-success px-4 fw-bold"> Enregistrer le Dossier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau de suivi -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <span class="fw-bold">📁 Liste des Dossiers Client</span>
+            
+            <!-- Recherche rapide -->
+            <input type="text" id="recherche" class="form-control form-control-sm w-25" placeholder="🔍 Rechercher (Nom, N° contrat...)" onkeyup="filtrerTableau()">
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Contrat</th>
+                        <th>Client</th>
+                        <th>Email</th>
+                        <th>Date d'effet</th>
+                        <th>Pièces attendues</th>
+                        <th>Dernière relance</th>
+                        <th>Statut</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historique (Audit) -->
+<div class="modal fade" id="modalHisto" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">📜 Preuve de Relances & Audit</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="histoContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let tousLesDossiers = [];
+
+async function chargerDossiers() {
+    let res = await fetch('/api/dossiers');
+    tousLesDossiers = await res.json();
+    afficherTableau(tousLesDossiers);
+}
+
+function afficherTableau(dossiers) {
+    let html = '';
+
+    dossiers.forEach(d => {
+        let classRow = d.alerte_7j ? 'alerte-rouge' : '';
+        let piecesBadge = d.pieces_manquantes.map(p => `<span class="badge bg-warning text-dark badge-piece">${p}</span>`).join(' ');
+        let dateRelance = d.derniere_relance ? new Date(d.derniere_relance).toLocaleString('fr-FR') : 'Aucune';
+        
+        let badgeStatut = d.statut === 'Complet' 
+            ? '<span class="badge bg-success">✅ Complet</span>' 
+            : (d.alerte_7j ? '<span class="badge bg-danger">⚠️ Relance > 7j</span>' : '<span class="badge bg-secondary">En attente</span>');
+
+        html += `
+            <tr class="${classRow}">
+                <td><strong>${d.num_contrat}</strong></td>
+                <td><strong>${d.nom}</strong> ${d.prenom}</td>
+                <td><small>${d.email}</small></td>
+                <td>${d.date_effet}</td>
+                <td>${piecesBadge || '<span class="text-success small">Toutes reçues !</span>'}</td>
+                <td><small>${dateRelance}</small></td>
+                <td>${badgeStatut}</td>
+                <td class="text-center">
+                    <button onclick="envoyerRelance(${d.id}, '${d.email}', '${d.nom} ${d.prenom}', ${JSON.stringify(d.pieces_manquantes).replace(/"/g, '&quot;')})" class="btn btn-primary btn-sm my-1" ${d.statut === 'Complet' ? 'disabled' : ''}>📧 Relancer</button>
+                    
+                    ${d.statut !== 'Complet' 
+                        ? `<button onclick="changerStatut(${d.id}, 'Complet')" class="btn btn-success btn-sm my-1">✅ Valider</button>` 
+                        : `<button onclick="changerStatut(${d.id}, 'En attente')" class="btn btn-outline-secondary btn-sm my-1">🔄 Rouvrir</button>`}
+                    
+                    <button onclick="voirHistorique(${d.id})" class="btn btn-info btn-sm text-white my-1">📜 Preuve</button>
+                    <button onclick="supprimerDossier(${d.id})" class="btn btn-outline-danger btn-sm my-1">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+    document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="8" class="text-center p-3 text-muted">Aucun dossier trouvé.</td></tr>';
+}
+
+function filtrerTableau() {
+    let terme = document.getElementById('recherche').value.toLowerCase();
+    let mefiltrer = tousLesDossiers.filter(d => 
+        d.nom.toLowerCase().includes(terme) || 
+        d.prenom.toLowerCase().includes(terme) || 
+        d.num_contrat.toLowerCase().includes(terme) ||
+        d.email.toLowerCase().includes(terme)
+    );
+    afficherTableau(mefiltrer);
+}
+
+async function ajouterDossier() {
+    let pieces = Array.from(document.querySelectorAll('#listePieces input:checked')).map(c => c.value);
+    let data = {
+        num_contrat: document.getElementById('num_contrat').value,
+        nom: document.getElementById('nom').value,
+        prenom: document.getElementById('prenom').value,
+        email: document.getElementById('email').value,
+        date_effet: document.getElementById('date_effet').value,
+        commentaire: document.getElementById('commentaire').value,
+        pieces: pieces
+    };
+
+    await fetch('/api/dossiers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+
+    document.getElementById('formClient').reset();
+    chargerDossiers();
+}
+
+async function changerStatut(id, statut) {
+    await fetch('/api/statut', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dossier_id: id, statut: statut})
+    });
+    chargerDossiers();
+}
+
+async function supprimerDossier(id) {
+    if(confirm("Confirmer la suppression de ce dossier client ?")) {
+        await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
+        chargerDossiers();
+    }
+}
+
+async function envoyerRelance(id, email, nomClient, pieces) {
+    await fetch('/api/relancer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dossier_id: id, email: email, pieces: pieces})
+    });
+
+    let sujet = encodeURIComponent("Rappel : Pièces manquantes pour votre contrat d'assurance");
+    let listeTexte = pieces.map(p => " - " + p).join("%0D%0A");
+    let corps = encodeURIComponent(`Bonjour ${nomClient},%0D%0A%0D%0AAfin de finaliser votre dossier d'assurance, merci de bien vouloir nous faire parvenir les pièces suivantes :%0D%0A%0D%0A`) + listeTexte + encodeURIComponent(`%0D%0A%0D%0ACordialement,%0D%0AVotre Gestionnaire d'Assurances`);
+
+    window.location.href = `mailto:${email}?subject=${sujet}&body=${corps}`;
+
+    chargerDossiers();
+}
+
+async function voirHistorique(id) {
+    let res = await fetch(`/api/historique/${id}`);
+    let histo = await res.json();
+
+    let content = '<ul class="list-group">';
+    if(histo.length === 0) {
+        content += '<li class="list-group-item">Aucune relance effectuée pour le moment.</li>';
+    } else {
+        histo.forEach(h => {
+            let date = new Date(h.date_heure).toLocaleString('fr-FR');
+            content += `
+                <li class="list-group-item">
+                    <strong>Date & Heure :</strong> ${date}<br>
+                    <strong>Destinataire :</strong> ${h.email}<br>
+                    <strong>Pièces réclamées :</strong> ${h.pieces.join(', ')}
+                </li>
+            `;
+        });
+    }
+    content += '</ul>';
+
+    document.getElementById('histoContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('modalHisto')).show();
+}
+
+chargerDossiers();
+</script>
+</body>
+</html>

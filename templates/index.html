@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion & suivi des justificatifs 📁</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Google+Sans:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --chrome-bg: #202124;
+            --chrome-card: #292a2d;
+            --chrome-card-hover: #35363a;
+            --chrome-input: #171717;
+            --chrome-border: #3c4043;
+            --chrome-text: #e8eaed;
+            --chrome-text-sub: #bdc1c6;
+            --abeille-yellow: #ffcc00;
+            --abeille-yellow-btn: #fbbc04;
+        }
+
+        body { 
+            background-color: var(--chrome-bg); 
+            font-family: 'Roboto', -apple-system, sans-serif;
+            color: var(--chrome-text);
+        }
+
+        h1, h2, h3, h4, .app-title, .fw-google {
+            font-family: 'Google Sans', 'Roboto', sans-serif;
+        }
+
+        /* En-tête */
+        .header-bg { 
+            background-color: var(--chrome-card);
+            border: 1px solid var(--chrome-border);
+            border-bottom: 4px solid var(--abeille-yellow); 
+            border-radius: 14px !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Cartes Chrome Dark */
+        .card-custom {
+            border: 1px solid var(--chrome-border);
+            border-radius: 12px;
+            background: var(--chrome-card);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .card-header-chrome { 
+            background-color: #2d2e31; 
+            color: var(--abeille-yellow); 
+            font-weight: 700; 
+            cursor: pointer; 
+            padding: 1rem 1.4rem;
+            border-bottom: 1px solid var(--chrome-border);
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .card-body-chrome {
+            background-color: var(--chrome-card) !important;
+            color: var(--chrome-text) !important;
+        }
+
+        /* Formulaires Dark */
+        .form-control, .form-select {
+            background-color: var(--chrome-input);
+            border-radius: 8px;
+            border: 1px solid var(--chrome-border);
+            color: var(--chrome-text);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.92rem;
+            transition: all 0.15s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--chrome-input);
+            color: var(--chrome-text);
+            border-color: var(--abeille-yellow);
+            box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.2);
+        }
+
+        .form-control::placeholder {
+            color: var(--chrome-text-sub);
+        }
+
+        /* Boutons */
+        .btn-abeille { 
+            background-color: var(--abeille-yellow-btn);
+            color: #202124; 
+            font-weight: 700; 
+            border: none; 
+            border-radius: 8px;
+            padding: 0.55rem 1.3rem;
+            font-family: 'Google Sans', sans-serif;
+            transition: all 0.15s ease;
+        }
+
+        .btn-abeille:hover { 
+            background-color: #fdd663; 
+            color: #000;
+        }
+
+        .btn-add-contrat {
+            background-color: var(--abeille-yellow);
+            color: #121212 !important;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            padding: 0.45rem 1rem;
+            font-size: 0.88rem;
+        }
+        .btn-add-contrat:hover {
+            background-color: #ffe033;
+            color: #000 !important;
+        }
+
+        /* Bloc Contrat */
+        .contrat-block { 
+            background: #202124; 
+            border-left: 4px solid var(--abeille-yellow); 
+            padding: 16px; 
+            border-radius: 10px; 
+            margin-bottom: 14px;
+            border-top: 1px solid var(--chrome-border);
+            border-right: 1px solid var(--chrome-border);
+            border-bottom: 1px solid var(--chrome-border);
+        }
+
+        .piece-checkbox-card {
+            background: var(--chrome-input);
+            border: 1px solid var(--chrome-border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.88rem;
+            color: var(--chrome-text);
+        }
+
+        .piece-checkbox-card:hover {
+            border-color: var(--abeille-yellow);
+            background-color: #28292c;
+        }
+
+        /* Tableaux Sombres */
+        .table {
+            color: var(--chrome-text) !important;
+            border-color: var(--chrome-border) !important;
+            background-color: var(--chrome-card) !important;
+        }
+
+        .table > :not(caption) > * > * {
+            background-color: var(--chrome-card) !important;
+            color: var(--chrome-text) !important;
+            border-bottom-color: var(--chrome-border) !important;
+        }
+
+        .table-head-chrome > th {
+            background-color: #202124 !important;
+            color: var(--chrome-text-sub) !important;
+            border-bottom: 2px solid var(--chrome-border) !important;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table-hover tbody tr:hover > * { 
+            background-color: var(--chrome-card-hover) !important; 
+        }
+
+        .text-light-custom {
+            color: #e8eaed !important;
+        }
+
+        /* Couleurs de fond de ligne */
+        .row-vert > * { background-color: rgba(16, 185, 129, 0.08) !important; }
+        .row-orange > * { background-color: rgba(245, 158, 11, 0.08) !important; }
+        .row-rouge > * { background-color: rgba(239, 68, 68, 0.08) !important; }
+
+        /* Badges de Statut */
+        .badge-pill-custom {
+            padding: 0.45em 0.85em;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+
+        .badge-vert { background: #137333; color: #e6f4ea; border: 1px solid #1e8e3e; }
+        .badge-orange { background: #b06000; color: #feefc3; border: 1px solid #e37400; }
+        .badge-rouge { background: #c5221f; color: #fce8e6; border: 1px solid #d93025; }
+
+        /* Centrage et alignement des Pièces Attendues */
+        .cell-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 48px;
+        }
+
+        .badge-piece { 
+            font-size: 0.82rem; 
+            padding: 0.35em 0.7em;
+            border-radius: 6px; 
+            background-color: #3c2e00; 
+            color: #ffd54f; 
+            border: 1px solid #855f00; 
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* N° Contrat & Nom Client */
+        .num-contrat-link { 
+            cursor: pointer; 
+            color: #ffffff; 
+            font-weight: 700; 
+            text-decoration: none; 
+            transition: color 0.15s ease;
+        }
+
+        .num-contrat-link:hover { 
+            color: var(--abeille-yellow); 
+            text-decoration: underline; 
+        }
+
+        .client-nom-highlight {
+            color: var(--abeille-yellow) !important;
+            font-weight: 700;
+        }
+
+        /* Bulle de Commentaire */
+        .btn-comment { 
+            cursor: pointer; 
+            text-decoration: none !important; 
+            font-size: 1.15rem; 
+            display: inline-block;
+            vertical-align: middle;
+            filter: drop-shadow(0 0 2px rgba(255,255,255,0.5));
+        }
+
+        /* Boutons Actions */
+        .btn-action-mail {
+            background-color: var(--abeille-yellow-btn);
+            color: #202124;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+        }
+        .btn-action-mail:hover {
+            background-color: #fdd663;
+            color: #000;
+        }
+
+        .btn-action-archive {
+            background-color: #1e8e3e;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+        }
+        .btn-action-archive:hover {
+            background-color: #34a853;
+            color: #ffffff;
+        }
+
+        .btn-action-proof {
+            background-color: #3c4043;
+            color: #8ab4f8;
+            font-weight: 500;
+            border: 1px solid #5f6368;
+            border-radius: 6px;
+        }
+        .btn-action-proof:hover {
+            background-color: #4a4e51;
+            color: #c2e7ff;
+        }
+
+        /* Modals Dark */
+        .modal-content {
+            background-color: var(--chrome-card);
+            border: 1px solid var(--chrome-border);
+            color: var(--chrome-text);
+            border-radius: 12px;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--chrome-border);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--chrome-border);
+        }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+<div class="container-fluid">
+    
+    <!-- En-tête -->
+    <div class="p-3 p-md-4 mb-4 header-bg d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-4">
+            <img src="/static/logo.png" alt="Abeille Assurances" style="height: 70px; background: white; padding: 6px; border-radius: 10px;" onerror="this.style.display='none'">
+            <div>
+                <h1 class="h2 mb-1 text-white app-title">Gestion & suivi des justificatifs 📁</h1>
+                <p class="mb-0 text-warning opacity-90 small fw-bold">Cabinet Lemaire Nadège - Abeille Assurances Crest</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire Nouveau Client -->
+    <div class="card card-custom mb-4">
+        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseForm">
+            <span class="fs-6">➕ Nouveau Dossier Client</span>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <div id="collapseForm" class="collapse show">
+            <div class="card-body card-body-chrome p-4">
+                <form id="formClient" onsubmit="event.preventDefault(); enregistrerDossierClient();">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-light-custom">NOM *</label>
+                            <input type="text" id="nom" class="form-control" placeholder="EX: DUPONT" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-light-custom">PRÉNOM *</label>
+                            <input type="text" id="prenom" class="form-control" placeholder="ex: Jean" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-light-custom">EMAIL</label>
+                            <input type="email" id="email" class="form-control" placeholder="optionnel">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-light-custom">TÉLÉPHONE</label>
+                            <input type="text" id="telephone" class="form-control" placeholder="ex: 0612345678">
+                        </div>
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--chrome-border);">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-white fw-google">📜 Contrat(s) associé(s)</h6>
+                        <button type="button" onclick="ajouterBlocContrat()" class="btn btn-add-contrat">➕ Ajouter un contrat</button>
+                    </div>
+
+                    <div id="conteneurContrats"></div>
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label fw-bold small text-light-custom">COMMENTAIRE / REMARQUES</label>
+                        <textarea id="commentaire" class="form-control" rows="2" placeholder="Particularités du dossier..."></textarea>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-abeille px-4">Enregistrer le Client & ses Contrats</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau Actif -->
+    <div class="card card-custom mb-4">
+        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable">
+            <span class="fw-bold text-warning fs-6">📁 Liste des Dossiers Client</span>
+            <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+                <input type="text" id="recherche" class="form-control form-control-sm" style="width: 280px;" placeholder="🔍 Rechercher (Nom, N° contrat, Immat...)" onkeyup="filtrerTableaux()">
+                <i class="bi bi-chevron-down text-warning ms-2"></i>
+            </div>
+        </div>
+        <div id="collapseTable" class="collapse show">
+            <div class="card-body card-body-chrome p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="small text-uppercase table-head-chrome">
+                                <th class="ps-4">N° Contrat(s)</th>
+                                <th>Client</th>
+                                <th>Contact</th>
+                                <th class="sortable" style="cursor:pointer;" onclick="trierParDateEffet()">Date(s) d'effet ⇕</th>
+                                <th class="text-center">Pièces attendues</th>
+                                <th class="sortable" style="cursor:pointer;" onclick="trierParDerniereRelance()">Dernière relance ⇕</th>
+                                <th>Statut</th>
+                                <th class="text-center pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau Archivé -->
+    <div class="card card-custom">
+        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseArchive">
+            <span class="fw-bold text-warning fs-6">📦 Dossiers Archivés</span>
+            <i class="bi bi-chevron-down text-warning"></i>
+        </div>
+        <div id="collapseArchive" class="collapse">
+            <div class="card-body card-body-chrome p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="small text-uppercase table-head-chrome">
+                                <th class="ps-4">N° Contrat(s)</th>
+                                <th>Client</th>
+                                <th>Contact</th>
+                                <th>Date(s) d'effet</th>
+                                <th class="text-center">Justificatifs reçus</th>
+                                <th class="text-center pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableArchiveBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Modif/Consultation Contrat -->
+<div class="modal fade" id="modalContrat" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-warning app-title">🚗 Consultation du Contrat & Justificatifs</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="editContratId">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-light-custom">N° CONTRAT</label>
+                <input type="text" id="editNumContrat" class="form-control opacity-75" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-light-custom">TYPE VÉHICULE</label>
+                <input type="text" id="editTypeVehiculeText" class="form-control opacity-75" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-light-custom">MARQUE</label>
+                <input type="text" id="editMarque" class="form-control opacity-75" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-light-custom">IMMATRICULATION</label>
+                <input type="text" id="editImmat" class="form-control" oninput="this.value = this.value.toUpperCase()">
+            </div>
+        </div>
+        <label class="form-label fw-bold text-danger mt-2">📋 Modifier les pièces manquantes :</label>
+        <div class="p-3 rounded-3" style="background: #171717; border: 1px solid var(--chrome-border);" id="editListePieces"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="sauvegarderContratDetail()" class="btn btn-abeille">Sauvegarder les modifications</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Consultation Pièces Reçues Archive -->
+<div class="modal fade" id="modalArchivePieces" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-success app-title">✅ Justificatifs Reçus & Validés</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="archiveContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Commentaire -->
+<div class="modal fade" id="modalCommentaire" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-warning app-title">💬 Commentaire du dossier</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="commentClientId">
+        <textarea id="editCommentaireTexte" class="form-control" rows="5" placeholder="Saisir ou modifier le commentaire..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="sauvegarderCommentaire()" class="btn btn-abeille">Enregistrer le commentaire</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Historique -->
+<div class="modal fade" id="modalHisto" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-warning app-title">📜 Preuve de Relances & Audit</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="histoContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let tousLesClients = [];
+let triDateAsc = true;
+let triRelanceAsc = true;
+let nombreContratsActifs = 0;
+
+const PIECES_PERSONNELLES = [
+    "Permis de conduire", 
+    "Permis conjoint(e)", 
+    "Permis définitif (Jeune permis)", 
+    "Permis AM (BSR)", 
+    "Attestation permis A1"
+];
+
+const MARQUES = {
+    'Voiture': ['Peugeot', 'Renault', 'Citroën', 'Volkswagen', 'BMW', 'Mercedes', 'Audi', 'Toyota', 'Ford', 'Fiat', 'Dacia', 'Nissan', 'Hyundai', 'Kia'],
+    'Camping-car': ['Chausson', 'Pilote', 'Rapido', 'Bürstner', 'Hymer', 'Autostar', 'Challenger', 'McLouis', 'Trigano'],
+    'Moto': ['Yamaha', 'Honda', 'BMW', 'Kawasaki', 'Suzuki', 'Triumph', 'Ducati', 'KTM', 'Harley-Davidson'],
+    'Scooter': ['Yamaha', 'Honda', 'Piaggio', 'Peugeot', 'Sym', 'Kymco', 'Vespa'],
+    'Trottinette': ['Xiaomi', 'Ninebot / Segway', 'Dualtron', 'Wispeed', 'UrbanGlide', 'E-Twow']
+};
+
+const PIECES_STRUCTUREES = {
+    'Voiture': ["Permis de conduire", "Permis conjoint(e)", "Permis définitif (Jeune permis)", "Carte grise", "Carte grise barrée + Certificat de cession", "Relevé d'information 24 mois", "Contrat signé", "Kilométrage de la voiture"],
+    'Camping-car': ["Permis de conduire", "Permis conjoint(e)", "Carte grise", "Carte grise barrée + Certificat de cession", "Relevé d'information 24 mois", "Contrat signé", "Kilométrage de la voiture"],
+    'Moto': ["Permis de conduire", "Attestation permis A1", "Carte grise", "Carte grise barrée + Certificat de cession", "Relevé d'information 24 mois", "Contrat signé", "Kilométrage du véhicule", "Facture d'antivol"],
+    'Scooter': ["Permis de conduire", "Permis AM (BSR)", "Attestation permis A1", "Carte grise", "Carte grise barrée + Certificat de cession", "Relevé d'information 24 mois", "Contrat signé", "Facture d'antivol"],
+    'Trottinette': ["Contrat signé", "Facture d'achat", "Facture d'antivol"]
+};
+
+function reinitialiserFormulaire() {
+    document.getElementById('formClient').reset();
+    document.getElementById('conteneurContrats').innerHTML = '';
+    nombreContratsActifs = 0;
+    ajouterBlocContrat();
+}
+
+function ajouterBlocContrat() {
+    nombreContratsActifs++;
+    let idUnique = Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    let html = `
+        <div class="contrat-block" id="blocContrat_${idUnique}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong class="text-warning fw-google">Contrat #${nombreContratsActifs}</strong>
+                ${nombreContratsActifs > 1 ? `<button type="button" onclick="supprimerBlocContrat('${idUnique}')" class="btn btn-outline-danger btn-sm border-0">🗑️ Supprimer</button>` : ''}
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1 text-light-custom">N° Contrat (8 chiffres) *</label>
+                    <input type="text" class="form-control form-control-sm contrat-num" maxlength="8" placeholder="ex: 80283549" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1 text-light-custom">Date d'effet *</label>
+                    <input type="date" class="form-control form-control-sm contrat-date" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1 text-light-custom">Type de Véhicule</label>
+                    <select class="form-select form-select-sm contrat-type" onchange="mettreAJourChampsType('${idUnique}')">
+                        <option value="Voiture">Voiture</option>
+                        <option value="Camping-car">Camping-car</option>
+                        <option value="Moto">Moto</option>
+                        <option value="Scooter">Scooter</option>
+                        <option value="Trottinette">Trottinette</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1 text-light-custom">Marque (optionnel)</label>
+                    <div id="divMarque_${idUnique}"></div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1 text-light-custom">Immatriculation</label>
+                    <input type="text" class="form-control form-control-sm contrat-immat" placeholder="ex: AA-123-BB" oninput="this.value = this.value.toUpperCase()">
+                </div>
+            </div>
+            <label class="form-label fw-bold small text-danger mb-2">📋 Pièces manquantes pour ce contrat :</label>
+            <div class="row g-2 contrat-pieces" id="piecesContrat_${idUnique}"></div>
+        </div>
+    `;
+    document.getElementById('conteneurContrats').insertAdjacentHTML('beforeend', html);
+    mettreAJourChampsType(idUnique);
+}
+
+function mettreAJourChampsType(idUnique) {
+    let block = document.getElementById(`blocContrat_${idUnique}`);
+    let type = block.querySelector('.contrat-type').value;
+
+    let listMarques = MARQUES[type] || [];
+    let marqueContainer = document.getElementById(`divMarque_${idUnique}`);
+    
+    let htmlMarque = `<select class="form-select form-select-sm contrat-marque-select" onchange="changementMarqueSelect('${idUnique}')">`;
+    htmlMarque += `<option value="" selected>-- Non renseignée --</option>`;
+    listMarques.forEach(m => htmlMarque += `<option value="${m}">${m}</option>`);
+    htmlMarque += `<option value="AUTRE_VALEUR">Autre marque...</option></select>`;
+    htmlMarque += `<input type="text" class="form-control form-control-sm contrat-marque-custom mt-1 d-none" placeholder="Préciser la marque">`;
+    marqueContainer.innerHTML = htmlMarque;
+
+    let items = PIECES_STRUCTUREES[type] || PIECES_STRUCTUREES['Voiture'];
+    let piecesContainer = document.getElementById(`piecesContrat_${idUnique}`);
+    let htmlPieces = '';
+
+    items.forEach(p => {
+        htmlPieces += `<div class="col-md-4"><label class="piece-checkbox-card"><input type="checkbox" value="${p}"> <span>${p}</span></label></div>`;
+    });
+
+    piecesContainer.innerHTML = htmlPieces;
+}
+
+function changementMarqueSelect(idUnique) {
+    let block = document.getElementById(`blocContrat_${idUnique}`);
+    let sel = block.querySelector('.contrat-marque-select');
+    let customInput = block.querySelector('.contrat-marque-custom');
+    if(sel.value === 'AUTRE_VALEUR') {
+        customInput.classList.remove('d-none');
+    } else {
+        customInput.classList.add('d-none');
+    }
+}
+
+function supprimerBlocContrat(idUnique) {
+    let el = document.getElementById(`blocContrat_${idUnique}`);
+    if(el) {
+        el.remove();
+        nombreContratsActifs--;
+        recalculerTitresContrats();
+    }
+}
+
+function recalculerTitresContrats() {
+    let blocks = document.querySelectorAll('.contrat-block');
+    blocks.forEach((b, index) => {
+        let title = b.querySelector('strong');
+        if(title) title.innerText = `Contrat #${index + 1}`;
+    });
+}
+
+async function chargerDossiers() {
+    let res = await fetch('/api/dossiers');
+    tousLesClients = await res.json();
+    afficherTableau(tousLesClients);
+}
+
+function formatDateFR(dateStr) {
+    if(!dateStr) return '';
+    let parts = dateStr.split('-');
+    if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+}
+
+function afficherTableau(clients) {
+    let htmlActifs = '';
+    let htmlArchives = '';
+
+    clients.forEach(cl => {
+        let classRow = '';
+        let badgeClass = 'badge-vert';
+
+        if(cl.niveau_urgence === 'vert') { classRow = 'row-vert'; badgeClass = 'badge-vert'; }
+        else if(cl.niveau_urgence === 'orange') { classRow = 'row-orange'; badgeClass = 'badge-orange'; }
+        else if(cl.niveau_urgence === 'rouge') { classRow = 'row-rouge'; badgeClass = 'badge-rouge'; }
+
+        let dateRelance = cl.derniere_relance ? new Date(cl.derniere_relance).toLocaleString('fr-FR') : 'Aucune';
+
+        let contactInfo = '';
+        if(cl.email) contactInfo += `<div>📧 <small class="text-light-custom">${cl.email}</small></div>`;
+        if(cl.telephone) contactInfo += `<div>📞 <small class="text-light-custom">${cl.telephone}</small></div>`;
+
+        let btnCommentaire = `<a href="javascript:void(0)" onclick="ouvrirCommentaire(${cl.id}, ${JSON.stringify(cl.commentaire).replace(/"/g, '&quot;')})" class="btn-comment ms-1" title="Voir/modifier le commentaire">${cl.commentaire ? '💬' : '💬'}</a>`;
+
+        let contratsHTML = '';
+        let datesEffetHTML = '';
+        let piecesManquantesHTML = '';
+        let piecesPersoSet = new Set();
+        let piecesContratsList = [];
+        let dossierEstComplet = true;
+        let nbContrats = cl.contrats.length;
+
+        cl.contrats.forEach(c => {
+            contratsHTML += `<div><span class="num-contrat-link" onclick="ouvrirEditeurContrat(${JSON.stringify(c).replace(/"/g, '&quot;')})">${c.num_contrat}</span></div>`;
+            datesEffetHTML += `<div>${formatDateFR(c.date_effet)}</div>`;
+
+            let badgesP = c.pieces_manquantes.map(p => `<span class="badge badge-piece">${p}</span>`).join('');
+            piecesManquantesHTML += `<div class="cell-center">${badgesP || '<span class="text-success small fw-bold">Complet !</span>'}</div>`;
+
+            if(c.pieces_manquantes && c.pieces_manquantes.length > 0) {
+                dossierEstComplet = false;
+            }
+
+            c.pieces_manquantes.forEach(pm => {
+                if (PIECES_PERSONNELLES.includes(pm)) {
+                    piecesPersoSet.add(pm);
+                } else {
+                    if (nbContrats > 1) {
+                        let infoAuto = [c.marque, c.immat].filter(Boolean).join(' ');
+                        let precisionAuto = infoAuto ? ` (${infoAuto})` : '';
+                        piecesContratsList.push(`${pm} du contrat N°${c.num_contrat}${precisionAuto}`);
+                    } else {
+                        piecesContratsList.push(pm);
+                    }
+                }
+            });
+        });
+
+        let toutesPiecesFormatees = [
+            ...Array.from(piecesPersoSet),
+            ...piecesContratsList
+        ];
+
+        if(cl.statut === 'Archivé') {
+            htmlArchives += `
+                <tr>
+                    <td class="ps-4">${contratsHTML}</td>
+                    <td><span class="client-nom-highlight">${cl.nom}</span> <span class="text-light-custom">${cl.prenom}</span> ${btnCommentaire}</td>
+                    <td>${contactInfo || '<small class="text-light-custom">-</small>'}</td>
+                    <td>${datesEffetHTML}</td>
+                    <td class="text-center">
+                        <button onclick="ouvrirPiecesArchives(${JSON.stringify(cl.contrats).replace(/"/g, '&quot;')})" class="btn btn-outline-success btn-sm fw-bold">👁️ Pièces reçues</button>
+                    </td>
+                    <td class="text-center pe-4">
+                        <button onclick="changerStatut(${cl.id}, 'En attente')" class="btn btn-chrome-secondary btn-sm">🔄 Désarchiver</button>
+                        <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm ms-1">📜 Preuve</button>
+                        <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm ms-1">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        } else {
+            let archiveBtnHTML = dossierEstComplet 
+                ? `<button onclick="changerStatut(${cl.id}, 'Archivé')" class="btn btn-action-archive btn-sm my-1">📦 Archiver</button>`
+                : `<button class="btn btn-chrome-secondary btn-sm my-1 opacity-25" disabled title="Le dossier doit être complet pour être archivé">📦 Archiver</button>`;
+
+            htmlActifs += `
+                <tr class="${classRow}">
+                    <td class="ps-4">${contratsHTML}</td>
+                    <td><span class="client-nom-highlight">${cl.nom}</span> <span class="text-light-custom">${cl.prenom}</span> ${btnCommentaire}</td>
+                    <td>${contactInfo || '<small class="text-light-custom">Aucun contact</small>'}</td>
+                    <td>${datesEffetHTML}</td>
+                    <td>${piecesManquantesHTML}</td>
+                    <td><small class="text-light-custom">${dateRelance}</small></td>
+                    <td><span class="badge ${badgeClass} badge-pill-custom">${cl.texte_statut}</span></td>
+                    <td class="text-center pe-4">
+                        <button onclick="envoyerRelance(${cl.id}, '${cl.email}', '${cl.nom}', ${JSON.stringify(cl.contrats).replace(/"/g, '&quot;')}, ${JSON.stringify(toutesPiecesFormatees).replace(/"/g, '&quot;')})" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
+                        ${archiveBtnHTML}
+                        <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
+                        <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm my-1 ms-1">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        }
+    });
+
+    document.getElementById('tableBody').innerHTML = htmlActifs || '<tr><td colspan="8" class="text-center p-4 text-light-custom">Aucun dossier actif pour le moment.</td></tr>';
+    document.getElementById('tableArchiveBody').innerHTML = htmlArchives || '<tr><td colspan="6" class="text-center p-4 text-light-custom">Aucun dossier archivé.</td></tr>';
+}
+
+function trierParDateEffet() {
+    triDateAsc = !triDateAsc;
+    tousLesClients.sort((a, b) => {
+        let dateA = a.contrats.length ? new Date(a.contrats[0].date_effet) : new Date(0);
+        let dateB = b.contrats.length ? new Date(b.contrats[0].date_effet) : new Date(0);
+        return triDateAsc ? dateA - dateB : dateB - dateA;
+    });
+    afficherTableau(tousLesClients);
+}
+
+function trierParDerniereRelance() {
+    triRelanceAsc = !triRelanceAsc;
+    tousLesClients.sort((a, b) => {
+        let dateA = a.derniere_relance ? new Date(a.derniere_relance) : new Date(0);
+        let dateB = b.derniere_relance ? new Date(b.derniere_relance) : new Date(0);
+        return triRelanceAsc ? dateA - dateB : dateB - dateA;
+    });
+    afficherTableau(tousLesClients);
+}
+
+function filtrerTableaux() {
+    let terme = document.getElementById('recherche').value.toLowerCase().trim();
+    let mefiltrer = tousLesClients.filter(cl => 
+        cl.nom.toLowerCase().includes(terme) || 
+        cl.prenom.toLowerCase().includes(terme) || 
+        (cl.email && cl.email.toLowerCase().includes(terme)) ||
+        (cl.telephone && cl.telephone.includes(terme)) ||
+        cl.contrats.some(c => 
+            c.num_contrat.toLowerCase().includes(terme) || 
+            (c.immat && c.immat.toLowerCase().includes(terme))
+        )
+    );
+    afficherTableau(mefiltrer);
+}
+
+async function enregistrerDossierClient() {
+    let listeContrats = [];
+    let erreurFormatNum = false;
+
+    document.querySelectorAll('.contrat-block').forEach(b => {
+        let numInput = b.querySelector('.contrat-num');
+        let dateInput = b.querySelector('.contrat-date');
+        let typeVal = b.querySelector('.contrat-type').value;
+        
+        let num = numInput.value.trim();
+        let date = dateInput.value;
+        let immat = b.querySelector('.contrat-immat').value.trim().toUpperCase();
+
+        let selMarque = b.querySelector('.contrat-marque-select');
+        let marque = '';
+        if(selMarque && selMarque.value) {
+            marque = (selMarque.value === 'AUTRE_VALEUR') 
+                ? b.querySelector('.contrat-marque-custom').value.trim() 
+                : selMarque.value;
+        }
+
+        let pieces = Array.from(b.querySelectorAll('.contrat-pieces input:checked')).map(c => c.value);
+
+        if(num.length !== 8 || isNaN(num)) {
+            erreurFormatNum = true;
+        } else if(num && date) {
+            listeContrats.push({ num_contrat: num, type_vehicule: typeVal, date_effet: date, marque: marque, immat: immat, pieces: pieces });
+        }
+    });
+
+    if(erreurFormatNum) {
+        alert("Attention : Le N° de Contrat doit obligatoirement comporter exactement 8 chiffres.");
+        return;
+    }
+
+    if(listeContrats.length === 0) {
+        alert("Attention : Veuillez saisir au moins un contrat valide.");
+        return;
+    }
+
+    let data = {
+        nom: document.getElementById('nom').value,
+        prenom: document.getElementById('prenom').value,
+        email: document.getElementById('email').value,
+        telephone: document.getElementById('telephone').value,
+        commentaire: document.getElementById('commentaire').value,
+        contrats: listeContrats
+    };
+
+    let res = await fetch('/api/dossiers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+
+    if(res.ok) {
+        reinitialiserFormulaire();
+        chargerDossiers();
+    } else {
+        alert("Erreur lors de l'enregistrement. Vérifiez vos données.");
+    }
+}
+
+function ouvrirEditeurContrat(contrat) {
+    document.getElementById('editContratId').value = contrat.id;
+    document.getElementById('editNumContrat').value = contrat.num_contrat;
+    document.getElementById('editTypeVehiculeText').value = contrat.type_vehicule || 'Voiture';
+    document.getElementById('editMarque').value = contrat.marque || '-';
+    document.getElementById('editImmat').value = contrat.immat || '';
+
+    let type = contrat.type_vehicule || 'Voiture';
+    let items = PIECES_STRUCTUREES[type] || PIECES_STRUCTUREES['Voiture'];
+    let container = document.getElementById('editListePieces');
+    let html = '';
+
+    items.forEach(p => {
+        let isChecked = contrat.pieces_manquantes.includes(p) ? 'checked' : '';
+        html += `<div class="col-md-6 mb-2"><label class="piece-checkbox-card"><input type="checkbox" value="${p}" ${isChecked}> <span>${p}</span></label></div>`;
+    });
+
+    container.innerHTML = `<div class="row g-2">${html}</div>`;
+    new bootstrap.Modal(document.getElementById('modalContrat')).show();
+}
+
+async function sauvegarderContratDetail() {
+    let id = document.getElementById('editContratId').value;
+    let immat = document.getElementById('editImmat').value.toUpperCase();
+    let pieces = Array.from(document.querySelectorAll('#editListePieces input:checked')).map(c => c.value);
+
+    await fetch('/api/contrats/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ contrat_id: parseInt(id), immat: immat, pieces: pieces })
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
+    chargerDossiers();
+}
+
+function ouvrirPiecesArchives(contrats) {
+    let html = '';
+    contrats.forEach(c => {
+        let detailsAuto = (c.marque || c.immat) ? ` (${c.marque} ${c.immat})` : '';
+        html += `<h6 class="fw-bold text-white">Contrat N°${c.num_contrat}${detailsAuto}</h6><ul class="mb-3 ps-3">`;
+        if(c.pieces_initiales && c.pieces_initiales.length > 0) {
+            c.pieces_initiales.forEach(p => {
+                html += `<li class="text-success fw-bold">✅ ${p} (Reçue & Validée)</li>`;
+            });
+        } else {
+            html += `<li class="text-muted">Aucune pièce particulière renseignée.</li>`;
+        }
+        html += `</ul>`;
+    });
+    document.getElementById('archiveContent').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('modalArchivePieces')).show();
+}
+
+function ouvrirCommentaire(id, commActuel) {
+    document.getElementById('commentClientId').value = id;
+    document.getElementById('editCommentaireTexte').value = commActuel || '';
+    new bootstrap.Modal(document.getElementById('modalCommentaire')).show();
+}
+
+async function sauvegarderCommentaire() {
+    let id = document.getElementById('commentClientId').value;
+    let comm = document.getElementById('editCommentaireTexte').value;
+
+    await fetch('/api/dossiers/update_commentaire', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({client_id: parseInt(id), commentaire: comm})
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('modalCommentaire')).hide();
+    chargerDossiers();
+}
+
+async function changerStatut(id, statut) {
+    await fetch('/api/statut', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({client_id: id, statut: statut})
+    });
+    chargerDossiers();
+}
+
+async function supprimerClient(id) {
+    if(confirm("Confirmer la suppression de ce client et de tous ses contrats ?")) {
+        await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
+        chargerDossiers();
+    }
+}
+
+async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
+    await fetch('/api/relancer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({client_id: id, email: email, pieces: toutesPiecesFormatees})
+    });
+
+    let sujet = encodeURIComponent("RELANCE JUSTIFICATIFS");
+
+    let labelContrat = contrats.length > 1 ? "vos contrats" : "votre contrat";
+    let explicationContrats = contrats.map(c => {
+        let auto = [c.marque, c.immat].filter(Boolean).join(' ');
+        let autoStr = auto ? ` (${auto})` : '';
+        return `N°${c.num_contrat}${autoStr}`;
+    }).join(' et ');
+
+    let listeTexte = toutesPiecesFormatees.map(p => " - " + p).join("\n");
+    let texteBrut = `Bonjour Mme ou Mr ${nom},\n\nSauf erreur de ma part il me manque des justificatifs concernant ${labelContrat} ${explicationContrats} :\n\n${listeTexte}\n\nBelle journée à vous, cordialement\n`;
+    let corps = encodeURIComponent(texteBrut);
+
+    window.location.href = `mailto:${email}?subject=${sujet}&body=${corps}`;
+
+    chargerDossiers();
+}
+
+async function voirHistorique(id) {
+    let res = await fetch(`/api/historique/${id}`);
+    let histo = await res.json();
+
+    let content = '<ul class="list-group list-group-flush">';
+    if(histo.length === 0) {
+        content += '<li class="list-group-item bg-transparent text-muted">Aucune relance effectuée pour le moment.</li>';
+    } else {
+        histo.forEach(h => {
+            let date = new Date(h.date_heure).toLocaleString('fr-FR');
+            content += `
+                <li class="list-group-item bg-transparent text-white py-3 border-secondary">
+                    <div class="fw-bold text-warning mb-1">📅 ${date}</div>
+                    <div class="small text-muted mb-1">📩 Destinataire : ${h.email}</div>
+                    <div class="small"><strong>Pièces réclamées :</strong> ${h.pieces.join(', ')}</div>
+                </li>
+            `;
+        });
+    }
+    content += '</ul>';
+
+    document.getElementById('histoContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('modalHisto')).show();
+}
+
+reinitialiserFormulaire();
+chargerDossiers();
+</script>
+</body>
+</html>
