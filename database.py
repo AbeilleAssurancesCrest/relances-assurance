@@ -2,8 +2,12 @@ import os
 import json
 import requests
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pswcxcjvybvsvimfrrnq.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pswcxcjvybvsvimfrrnq.supabase.co").strip()
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
+
+# Nettoyage automatique au cas où une URL markdown est injectée
+if "[" in SUPABASE_URL:
+    SUPABASE_URL = "https://pswcxcjvybvsvimfrrnq.supabase.co"
 
 def get_headers():
     return {
@@ -18,7 +22,6 @@ def init_db():
 
 def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_contrats):
     if not SUPABASE_KEY:
-        print("ERREUR : SUPABASE_KEY est vide !")
         return
     
     url_client = f"{SUPABASE_URL}/rest/v1/clients"
@@ -31,7 +34,6 @@ def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_c
         "statut": "En attente"
     }
     r = requests.post(url_client, headers=get_headers(), json=payload_client)
-    print("REPONSE SUPABASE CLIENT:", r.status_code, r.text)
     
     if r.status_code in [200, 201]:
         res = r.json()
@@ -51,10 +53,7 @@ def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_c
                     "pieces_manquantes": pieces_json,
                     "pieces_initiales": pieces_json
                 }
-                rc = requests.post(url_contrat, headers=get_headers(), json=payload_contrat)
-                print("REPONSE SUPABASE CONTRAT:", rc.status_code, rc.text)
-    else:
-        raise Exception(f"Erreur Supabase {r.status_code}: {r.text}")
+                requests.post(url_contrat, headers=get_headers(), json=payload_contrat)
 
 def get_all_clients():
     if not SUPABASE_KEY:
@@ -63,7 +62,6 @@ def get_all_clients():
     url_clients = f"{SUPABASE_URL}/rest/v1/clients?select=*&order=id.desc"
     r = requests.get(url_clients, headers=get_headers())
     if r.status_code != 200:
-        print("ERREUR GET CLIENTS:", r.status_code, r.text)
         return []
     
     clients = r.json()
