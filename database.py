@@ -1,24 +1,32 @@
-import sqlite3
-import json
 import os
+import json
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-DB_PATH = "database.db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if DATABASE_URL:
+        # Connexion Supabase / PostgreSQL sur Render
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        # Fallback local SQLite sur ton Mac
+        import sqlite3
+        conn = sqlite3.connect("database.db")
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
-    if not os.path.exists(DB_PATH):
-        open(DB_PATH, 'a').close()
-        
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    # Adaptation auto selon la BDD
+    is_postgres = bool(DATABASE_URL)
+    pk_type = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS clients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {pk_type},
             nom TEXT NOT NULL,
             prenom TEXT NOT NULL,
             email TEXT,
@@ -29,9 +37,9 @@ def init_db():
         )
     ''')
     
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS contrats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {pk_type},
             client_id INTEGER,
             num_contrat TEXT NOT NULL,
             type_vehicule TEXT,
@@ -44,9 +52,9 @@ def init_db():
         )
     ''')
 
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS historique (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {pk_type},
             client_id INTEGER,
             date_heure TEXT,
             email TEXT,
@@ -61,18 +69,33 @@ def init_db():
 def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_contrats):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO clients (nom, prenom, email, telephone, commentaire, statut)
-        VALUES (?, ?, ?, ?, ?, 'En attente')
-    ''', (nom, prenom, email, telephone, commentaire))
-    client_id = cursor.lastrowid
-
-    for c in liste_contrats:
-        pieces_json = json.dumps(c.get('pieces', []))
+    
+    if DATABASE_URL:
         cursor.execute('''
-            INSERT INTO contrats (client_id, num_contrat, type_vehicule, date_effet, marque, immat, pieces_manquantes, pieces_initiales)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (client_id, c['num_contrat'], c.get('type_vehicule', 'Voiture'), c['date_effet'], c.get('marque', ''), c.get('immat', ''), pieces_json, pieces_json))
+            INSERT INTO clients (nom, prenom, email, telephone, commentaire, statut)
+            VALUES (%s, %s, %s, %s, %s, 'En attente') RETURNING id
+        ''', (nom, prenom, email, telephone, commentaire))
+        client_id = cursor.fetchone()[0]
+
+        for c in liste_contrats:
+            pieces_json = json.dumps(c.get('pieces', []))
+            cursor.execute('''
+                INSERT INTO contrats (client_id, num_contrat, type_vehicule, date_effet, marque, immat, pieces_manquantes, pieces_initiales)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (client_id, c['num_contrat'], c.get('type_vehicule', 'Voiture'), c['date_effet'], c.get('marque', ''), c.get('immat', ''), pieces_json, pieces_json))
+    else:
+        cursor.execute('''
+            INSERT INTO clients (nom, prenom, email, telephone, commentaire, statut)
+            VALUES (?, ?, ?, ?, ?, 'En attente')
+        ''', (nom, prenom, email, telephone, commentaire))
+        client_id = cursor.lastrowid
+
+        for c in liste_contrats:
+            pieces_json = json.dumps(c.get('pieces', []))
+            cursor.execute('''
+                INSERT INTO contrats (client_id, num_contrat, type_vehicule, date_effet, marque, immat, pieces_manquantes, pieces_initiales)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (client_id, c['num_contrat'], c.get('type_vehicule', 'Voiture'), c['date_effet'], c.get('marque', ''), c.get('immat', ''), pieces_json, pieces_json))
 
     conn.commit()
     conn.close()
@@ -81,10 +104,11 @@ def update_contrat_details(contrat_id, immat, pieces):
     conn = get_connection()
     cursor = conn.cursor()
     pieces_json = json.dumps(pieces)
-    cursor.execute('''
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'''
         UPDATE contrats 
-        SET immat = ?, pieces_manquantes = ?
-        WHERE id = ?
+        SET immat = {placeholder}, pieces_manquantes = {placeholder}
+        WHERE id = {placeholder}
     ''', (immat, pieces_json, contrat_id))
     conn.commit()
     conn.close()
@@ -92,18 +116,28 @@ def update_contrat_details(contrat_id, immat, pieces):
 def update_commentaire(client_id, commentaire):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE clients SET commentaire = ? WHERE id = ?', (commentaire, client_id))
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'UPDATE clients SET commentaire = {placeholder} WHERE id = {placeholder}', (commentaire, client_id))
     conn.commit()
     conn.close()
 
 def get_all_clients():
     conn = get_connection()
-    cursor = conn.cursor()
+    if DATABASE_URL:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        cursor = conn.cursor()
+
     cursor.execute('SELECT * FROM clients ORDER BY id DESC')
-    clients = [dict(row) for row in cursor.fetchall()]
+    
+    if DATABASE_URL:
+        clients = [dict(row) for row in cursor.fetchall()]
+    else:
+        clients = [dict(row) for row in cursor.fetchall()]
 
     for cl in clients:
-        cursor.execute('SELECT * FROM contrats WHERE client_id = ?', (cl['id'],))
+        placeholder = "%s" if DATABASE_URL else "?"
+        cursor.execute(f'SELECT * FROM contrats WHERE client_id = {placeholder}', (cl['id'],))
         contrats_db = cursor.fetchall()
         
         contrats_list = []
@@ -153,14 +187,16 @@ def get_all_clients():
 def update_statut(client_id, statut):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE clients SET statut = ? WHERE id = ?', (statut, client_id))
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'UPDATE clients SET statut = {placeholder} WHERE id = {placeholder}', (statut, client_id))
     conn.commit()
     conn.close()
 
 def delete_client(client_id):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'DELETE FROM clients WHERE id = {placeholder}', (client_id,))
     conn.commit()
     conn.close()
 
@@ -169,18 +205,24 @@ def log_relance(client_id, email, pieces):
     conn = get_connection()
     cursor = conn.cursor()
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute('UPDATE clients SET derniere_relance = ? WHERE id = ?', (now, client_id))
-    cursor.execute('''
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'UPDATE clients SET derniere_relance = {placeholder} WHERE id = {placeholder}', (now, client_id))
+    cursor.execute(f'''
         INSERT INTO historique (client_id, date_heure, email, pieces)
-        VALUES (?, ?, ?, ?)
+        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
     ''', (client_id, now, email, json.dumps(pieces)))
     conn.commit()
     conn.close()
 
 def get_historique(client_id):
     conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM historique WHERE client_id = ? ORDER BY id DESC', (client_id,))
+    if DATABASE_URL:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        cursor = conn.cursor()
+
+    placeholder = "%s" if DATABASE_URL else "?"
+    cursor.execute(f'SELECT * FROM historique WHERE client_id = {placeholder} ORDER BY id DESC', (client_id,))
     rows = cursor.fetchall()
     result = []
     for r in rows:
