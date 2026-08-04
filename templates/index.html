@@ -976,7 +976,8 @@ async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
     let texteBrut = `Bonjour Mme ou Mr ${nom},\n\nSauf erreur de ma part il me manque des justificatifs concernant ${labelContrat} ${explicationContrats} :\n\n${listeTexte}\n\nBelle journée à vous, cordialement\n`;
     let corps = encodeURIComponent(texteBrut);
 
-    window.location.href = `mailto:${email}?subject=${sujet}&body=${corps}`;
+    const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(email) + '&su=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(corps);
+    window.open(gmailUrl, '_blank');
 
     chargerDossiers();
 }
