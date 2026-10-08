@@ -12,7 +12,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import BaseModel
 from database import (init_db, add_client_avec_contrats, get_all_clients, 
                       log_relance, get_historique, delete_client, add_contrats_a_client,
-                      update_contrat_details, update_commentaire)
+                      update_contrat_details, update_commentaire, update_coordonnees)
 
 app = FastAPI()
 init_db()
@@ -61,6 +61,11 @@ class CommentaireUpdateSchema(BaseModel):
     client_id: int
     commentaire: str
 
+class CoordonneesUpdateSchema(BaseModel):
+    client_id: int
+    email: str = ""
+    telephone: str = ""
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
@@ -99,6 +104,8 @@ def verifier_numeros_contrat(contrats, clients_existants):
 
 @app.post("/api/dossiers")
 def create_dossier(data: ClientSchema):
+    if not data.email.strip() and not data.telephone.strip():
+        raise HTTPException(status_code=400, detail="Ajoute au moins un moyen de contact : e-mail ou téléphone.")
     clients_existants = get_all_clients()
     identite_saisie = (normaliser_identite(data.nom), normaliser_identite(data.prenom))
     doublon_client = next((
@@ -133,6 +140,14 @@ def modify_contrat(data: ContratUpdateSchema):
 @app.post("/api/dossiers/update_commentaire")
 def modify_commentaire(data: CommentaireUpdateSchema):
     update_commentaire(data.client_id, data.commentaire)
+    return {"status": "ok"}
+
+@app.post("/api/dossiers/update_coordonnees")
+def modify_coordonnees(data: CoordonneesUpdateSchema):
+    if not data.email.strip() and not data.telephone.strip():
+        raise HTTPException(status_code=400, detail="Ajoute au moins un moyen de contact : e-mail ou téléphone.")
+    if not update_coordonnees(data.client_id, data.email.strip(), data.telephone.strip()):
+        raise HTTPException(status_code=502, detail="Impossible d'enregistrer les coordonnées.")
     return {"status": "ok"}
 
 @app.delete("/api/dossiers/{client_id}")
