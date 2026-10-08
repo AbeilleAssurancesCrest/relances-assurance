@@ -356,13 +356,14 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">EMAIL</label>
-                            <input type="email" id="email" class="form-control" placeholder="optionnel">
+                            <input type="email" id="email" class="form-control" placeholder="nom@exemple.fr">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">TÉLÉPHONE</label>
                             <input type="text" id="telephone" class="form-control" placeholder="ex: 0612345678">
                         </div>
                     </div>
+                    <div class="form-text text-warning mb-2">* Ajoute au moins un moyen de contact : e-mail ou téléphone.</div>
 
                     <div id="clientExistantAlerte" class="alert alert-warning mt-3 d-none" role="status">
                         <div id="clientExistantMessage" class="fw-bold mb-2"></div>
@@ -497,7 +498,31 @@
         <div class="p-3 rounded-3" style="background: #171717; border: 1px solid var(--chrome-border);" id="editListePieces"></div>
       </div>
       <div class="modal-footer">
+        <button type="button" onclick="marquerToutesPiecesRecues()" class="btn btn-outline-success me-auto">✅ Toutes les pièces sont reçues</button>
         <button type="button" onclick="sauvegarderContratDetail()" class="btn btn-abeille">Sauvegarder les modifications</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Coordonnées -->
+<div class="modal fade" id="modalCoordonnees" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-warning app-title">📇 Coordonnées du client</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="coordClientId">
+        <label class="form-label">E-mail</label>
+        <input type="email" id="coordEmail" class="form-control mb-3" placeholder="nom@exemple.fr">
+        <label class="form-label">Téléphone</label>
+        <input type="text" id="coordTelephone" class="form-control" placeholder="0612345678">
+        <div class="form-text text-warning mt-2">Au moins un des deux moyens de contact est obligatoire.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="sauvegarderCoordonnees()" class="btn btn-abeille">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -758,6 +783,7 @@ function afficherTableau(clients) {
         let contactInfo = '';
         if(cl.email) contactInfo += `<div>📧 <small class="text-light-custom">${cl.email}</small></div>`;
         if(cl.telephone) contactInfo += `<div>📞 <small class="text-light-custom">${cl.telephone}</small></div>`;
+        contactInfo += `<button onclick="ouvrirCoordonnees(${cl.id})" class="btn btn-outline-secondary btn-sm mt-1">✏️ Coordonnées</button>`;
 
         let btnCommentaire = `<a href="javascript:void(0)" onclick="ouvrirCommentaire(${cl.id}, ${JSON.stringify(cl.commentaire).replace(/"/g, '&quot;')})" class="btn-comment ms-1" title="Voir/modifier le commentaire">${cl.commentaire ? '💬' : '💬'}</a>`;
 
@@ -821,7 +847,7 @@ function afficherTableau(clients) {
                     <button data-relance="${donneesRelance}" onclick="envoyerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
                     <button data-relance="${donneesRelance}" onclick="confirmerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-outline-success btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''} title="À cliquer après l’envoi effectif dans Gmail">✅ Mail envoyé</button>
                     <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
-                    <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm my-1 ms-1" title="Supprimer ce dossier">🗑️</button>
+                    <button data-suppression="${encodeURIComponent(JSON.stringify([cl.id, `${cl.prenom} ${cl.nom}`, cl.contrats.map(c => c.num_contrat)]))}" onclick="supprimerDepuisBouton(this)" class="btn btn-outline-danger btn-sm my-1 ms-1" title="Supprimer ce dossier">🗑️</button>
                 </td>
             </tr>
         `;
@@ -992,6 +1018,10 @@ async function enregistrerDossierClient() {
         alert('Ce client existe déjà. Choisis sa fiche dans le message jaune pour y ajouter le contrat.');
         return;
     }
+    if (!document.getElementById('email').value.trim() && !document.getElementById('telephone').value.trim()) {
+        alert('Ajoute au moins un moyen de contact : e-mail ou téléphone.');
+        return;
+    }
 
     const listeContrats = collecterContratsSaisis();
     if (!listeContrats) return;
@@ -1072,6 +1102,19 @@ function ouvrirEditeurContrat(contrat) {
     new bootstrap.Modal(document.getElementById('modalContrat')).show();
 }
 
+async function marquerToutesPiecesRecues() {
+    if (!confirm('Confirmer que toutes les pièces de ce contrat ont bien été reçues ?')) return;
+    const id = parseInt(document.getElementById('editContratId').value);
+    const immat = document.getElementById('editImmat').value.toUpperCase();
+    const response = await fetch('/api/contrats/update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({contrat_id: id, immat, pieces: []})
+    });
+    if (!response.ok) { alert('La mise à jour a échoué. Réessaie.'); return; }
+    bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
+    await chargerDossiers();
+}
+
 async function sauvegarderContratDetail() {
     let id = document.getElementById('editContratId').value;
     let immat = document.getElementById('editImmat').value.toUpperCase();
@@ -1107,8 +1150,41 @@ async function sauvegarderCommentaire() {
     chargerDossiers();
 }
 
-async function supprimerClient(id) {
-    if(confirm("Confirmer la suppression de ce client et de tous ses contrats ?")) {
+function ouvrirCoordonnees(id) {
+    const client = tousLesClients.find(c => c.id === id);
+    if (!client) return;
+    document.getElementById('coordClientId').value = id;
+    document.getElementById('coordEmail').value = client.email || '';
+    document.getElementById('coordTelephone').value = client.telephone || '';
+    new bootstrap.Modal(document.getElementById('modalCoordonnees')).show();
+}
+
+async function sauvegarderCoordonnees() {
+    const id = parseInt(document.getElementById('coordClientId').value);
+    const email = document.getElementById('coordEmail').value.trim();
+    const telephone = document.getElementById('coordTelephone').value.trim();
+    if (!email && !telephone) { alert('Ajoute au moins un moyen de contact : e-mail ou téléphone.'); return; }
+    const response = await fetch('/api/dossiers/update_coordonnees', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({client_id: id, email, telephone})
+    });
+    if (!response.ok) {
+        const erreur = await response.json().catch(() => ({}));
+        alert(erreur.detail || 'Impossible d’enregistrer les coordonnées.');
+        return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalCoordonnees')).hide();
+    await chargerDossiers();
+}
+
+function supprimerDepuisBouton(bouton) {
+    const [id, nom, contrats] = JSON.parse(decodeURIComponent(bouton.dataset.suppression));
+    supprimerClient(id, nom, contrats);
+}
+
+async function supprimerClient(id, nom, contrats) {
+    const listeContrats = contrats.length ? contrats.map(numero => `• ${numero}`).join('\n') : 'Aucun contrat';
+    if(confirm(`Supprimer définitivement le dossier de ${nom} et tous ses contrats ?\n\nContrats concernés :\n${listeContrats}`)) {
         await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
         chargerDossiers();
     }
