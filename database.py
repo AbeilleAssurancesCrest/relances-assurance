@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+from datetime import datetime, timezone
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pswcxcjvybvsvimfrrnq.supabase.co").strip()
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
@@ -16,6 +17,17 @@ def get_headers():
         "Content-Type": "application/json",
         "Prefer": "return=representation"
     }
+
+def _parse_timestamp(value):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None
 
 def init_db():
     pass
@@ -73,8 +85,6 @@ def get_all_clients():
         
         contrats_list = []
         dossier_complet = True
-        nb_jours_max = 0
-
         for c in contrats_db:
             c_dict = dict(c)
             try:
@@ -92,33 +102,32 @@ def get_all_clients():
             if len(c_dict['pieces_manquantes']) > 0:
                 dossier_complet = False
 
-            if c_dict.get('date_effet'):
-                from datetime import datetime
-                try:
-                    d_effet = datetime.strptime(c_dict['date_effet'], '%Y-%m-%d')
-                    delta = (datetime.now() - d_effet).days
-                    if delta > nb_jours_max:
-                        nb_jours_max = delta
-                except:
-                    pass
-
         cl['contrats'] = contrats_list
 
-        if cl.get('statut') == 'Archivé':
-            cl['niveau_urgence'] = 'archive'
-            cl['texte_statut'] = 'Archivé'
-        elif dossier_complet:
+        if dossier_complet:
             cl['niveau_urgence'] = 'vert'
-            cl['texte_statut'] = 'Complet (Prêt à archiver)'
-        elif nb_jours_max >= 15:
-            cl['niveau_urgence'] = 'rouge'
-            cl['texte_statut'] = f'Urgent ({nb_jours_max} jrs)'
-        elif nb_jours_max >= 7:
-            cl['niveau_urgence'] = 'orange'
-            cl['texte_statut'] = f'Relance requise ({nb_jours_max} jrs)'
+            cl['texte_statut'] = 'Complet — à supprimer'
         else:
-            cl['niveau_urgence'] = 'vert'
-            cl['texte_statut'] = f'En cours ({nb_jours_max} jrs)'
+            reference_date = cl.get('derniere_relance') or cl.get('date_creation')
+            if not reference_date:
+                dates_effet = [c.get('date_effet') for c in contrats_list if c.get('date_effet')]
+                reference_date = min(dates_effet) if dates_effet else None
+
+            date_reference = _parse_timestamp(reference_date)
+            jours = max(0, (datetime.now(timezone.utc) - date_reference).days) if date_reference else 0
+            relance_deja_envoyee = bool(cl.get('derniere_relance'))
+
+            if jours >= 15:
+                cl['niveau_urgence'] = 'rouge'
+                cl['texte_statut'] = f'Urgent ({jours} j)'
+            elif jours >= 7:
+                cl['niveau_urgence'] = 'orange'
+                etiquette = 'Relance à faire' if relance_deja_envoyee else 'Première relance à faire'
+                cl['texte_statut'] = f'{etiquette} ({jours} j)'
+            else:
+                cl['niveau_urgence'] = 'vert'
+                etiquette = 'Relancé récemment' if relance_deja_envoyee else 'En cours'
+                cl['texte_statut'] = f'{etiquette} ({jours} j)'
 
     return clients
 
@@ -133,23 +142,20 @@ def update_commentaire(client_id, commentaire):
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
     requests.patch(url, headers=get_headers(), json={"commentaire": commentaire})
 
-def update_statut(client_id, statut):
-    if not SUPABASE_KEY: return
-    url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
-    requests.patch(url, headers=get_headers(), json={"statut": statut})
-
 def delete_client(client_id):
     if not SUPABASE_KEY: return
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
     requests.delete(url, headers=get_headers())
 
 def log_relance(client_id, email, pieces):
-    if not SUPABASE_KEY: return
-    from datetime import datetime
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if not SUPABASE_KEY:
+        return False
+    now = datetime.now(timezone.utc).isoformat(timespec='seconds')
     
     url_cl = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
-    requests.patch(url_cl, headers=get_headers(), json={"derniere_relance": now})
+    response_client = requests.patch(url_cl, headers=get_headers(), json={"derniere_relance": now})
+    if not response_client.ok:
+        return False
     
     url_h = f"{SUPABASE_URL}/rest/v1/historique"
     payload_h = {
@@ -158,7 +164,8 @@ def log_relance(client_id, email, pieces):
         "email": email,
         "pieces": json.dumps(pieces)
     }
-    requests.post(url_h, headers=get_headers(), json=payload_h)
+    response_historique = requests.post(url_h, headers=get_headers(), json=payload_h)
+    return response_historique.status_code in (200, 201, 204)
 
 def get_historique(client_id):
     if not SUPABASE_KEY: return []
