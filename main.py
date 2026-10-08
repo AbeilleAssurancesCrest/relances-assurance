@@ -1,5 +1,6 @@
 from datetime import datetime
 from io import BytesIO
+import unicodedata
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -10,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import BaseModel
 from database import (init_db, add_client_avec_contrats, get_all_clients, 
-                      log_relance, get_historique, delete_client,
+                      log_relance, get_historique, delete_client, add_contrats_a_client,
                       update_contrat_details, update_commentaire)
 
 app = FastAPI()
@@ -43,6 +44,9 @@ class ClientSchema(BaseModel):
     commentaire: str = ""
     contrats: list[ContratSchema]
 
+class AjouterContratsSchema(BaseModel):
+    contrats: list[ContratSchema]
+
 class RelanceSchema(BaseModel):
     client_id: int
     email: str
@@ -65,10 +69,60 @@ def index(request: Request):
 def fetch_dossiers():
     return get_all_clients()
 
+def normaliser_identite(value: str) -> str:
+    sans_accents = "".join(
+        caractere for caractere in unicodedata.normalize("NFKD", value or "")
+        if not unicodedata.combining(caractere)
+    )
+    return " ".join(sans_accents.split()).casefold()
+
+def verifier_numeros_contrat(contrats, clients_existants):
+    numeros_saisis = set()
+    proprietaires = {}
+    for client in clients_existants:
+        for contrat in client.get("contrats", []):
+            numero = str(contrat.get("num_contrat", "")).strip()
+            if numero:
+                proprietaires.setdefault(numero, client)
+
+    for contrat in contrats:
+        numero = str(contrat.num_contrat).strip()
+        if len(numero) != 8 or not numero.isdigit():
+            raise HTTPException(status_code=400, detail="Le numéro de contrat doit comporter exactement 8 chiffres.")
+        if numero in numeros_saisis:
+            raise HTTPException(status_code=409, detail=f"Le numéro de contrat {numero} apparaît plusieurs fois dans le formulaire.")
+        if numero in proprietaires:
+            client = proprietaires[numero]
+            nom_client = f"{client.get('prenom', '')} {client.get('nom', '')}".strip()
+            raise HTTPException(status_code=409, detail=f"Le contrat {numero} est déjà enregistré pour {nom_client}.")
+        numeros_saisis.add(numero)
+
 @app.post("/api/dossiers")
 def create_dossier(data: ClientSchema):
+    clients_existants = get_all_clients()
+    identite_saisie = (normaliser_identite(data.nom), normaliser_identite(data.prenom))
+    doublon_client = next((
+        client for client in clients_existants
+        if (normaliser_identite(client.get("nom", "")), normaliser_identite(client.get("prenom", ""))) == identite_saisie
+    ), None)
+    if doublon_client:
+        raise HTTPException(status_code=409, detail="Ce client existe déjà. Ajoute le contrat à sa fiche existante.")
+    verifier_numeros_contrat(data.contrats, clients_existants)
     contrats_list = [c.dict() for c in data.contrats]
     add_client_avec_contrats(data.nom, data.prenom, data.email, data.telephone, data.commentaire, contrats_list)
+    return {"status": "ok"}
+
+@app.post("/api/dossiers/{client_id}/contrats")
+def add_contracts_to_existing_client(client_id: int, data: AjouterContratsSchema):
+    clients_existants = get_all_clients()
+    if not any(client.get("id") == client_id for client in clients_existants):
+        raise HTTPException(status_code=404, detail="Client introuvable.")
+    if not data.contrats:
+        raise HTTPException(status_code=400, detail="Ajoute au moins un contrat.")
+    verifier_numeros_contrat(data.contrats, clients_existants)
+    contrats_list = [c.dict() for c in data.contrats]
+    if not add_contrats_a_client(client_id, contrats_list):
+        raise HTTPException(status_code=502, detail="Impossible d'ajouter le contrat au dossier.")
     return {"status": "ok"}
 
 @app.post("/api/contrats/update")
