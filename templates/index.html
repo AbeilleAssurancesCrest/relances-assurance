@@ -194,6 +194,34 @@
         .badge-orange { background: #b06000; color: #feefc3; border: 1px solid #e37400; }
         .badge-rouge { background: #c5221f; color: #fce8e6; border: 1px solid #d93025; }
 
+        .status-card {
+            width: 100%;
+            min-height: 104px;
+            border: 1px solid var(--chrome-border);
+            border-left: 4px solid var(--chrome-text-sub);
+            border-radius: 12px;
+            padding: 12px 14px;
+            background: var(--chrome-card);
+            color: var(--chrome-text);
+            text-align: left;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .status-card:hover, .status-card.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .status-card-red { border-left-color: #ef4444; }
+        .status-card-orange { border-left-color: #f59e0b; }
+        .status-card-green { border-left-color: #10b981; }
+        .status-card-neutral { border-left-color: var(--abeille-yellow); }
+        .status-card-red.active { border-color: #ef4444; }
+        .status-card-orange.active { border-color: #f59e0b; }
+        .status-card-green.active { border-color: #10b981; }
+        .status-card-neutral.active { border-color: var(--abeille-yellow); }
+        .status-card-title { display: block; font-weight: 700; font-family: 'Google Sans', sans-serif; }
+        .status-card-count { display: block; font-size: 1.65rem; line-height: 1.2; font-weight: 700; }
+        .status-card-hint { display: block; color: var(--chrome-text-sub); font-size: 0.78rem; }
+
         /* Centrage et alignement des Pièces Attendues */
         .cell-center {
             display: flex;
@@ -358,6 +386,45 @@
         </div>
     </div>
 
+    <!-- Tableau de bord des statuts -->
+    <div class="row g-3 mb-4" id="statusDashboard">
+        <div class="col-6 col-xl">
+            <button type="button" class="status-card status-card-red" data-status-card="rouge" onclick="filtrerParStatut('rouge')">
+                <span class="status-card-title">🚨 Urgents</span>
+                <span class="status-card-count" id="compteurUrgent">0</span>
+                <span class="status-card-hint">À traiter en priorité</span>
+            </button>
+        </div>
+        <div class="col-6 col-xl">
+            <button type="button" class="status-card status-card-orange" data-status-card="orange" onclick="filtrerParStatut('orange')">
+                <span class="status-card-title">📨 À relancer</span>
+                <span class="status-card-count" id="compteurRelance">0</span>
+                <span class="status-card-hint">Relance à faire</span>
+            </button>
+        </div>
+        <div class="col-6 col-xl">
+            <button type="button" class="status-card status-card-green" data-status-card="en-cours" onclick="filtrerParStatut('en-cours')">
+                <span class="status-card-title">🌱 En cours</span>
+                <span class="status-card-count" id="compteurEnCours">0</span>
+                <span class="status-card-hint">Encore dans le délai</span>
+            </button>
+        </div>
+        <div class="col-6 col-xl">
+            <button type="button" class="status-card status-card-green" data-status-card="complet" onclick="filtrerParStatut('complet')">
+                <span class="status-card-title">✅ Complets</span>
+                <span class="status-card-count" id="compteurComplets">0</span>
+                <span class="status-card-hint">Prêts à supprimer</span>
+            </button>
+        </div>
+        <div class="col-12 col-xl">
+            <button type="button" class="status-card status-card-neutral" data-status-card="tous" onclick="filtrerParStatut('tous')">
+                <span class="status-card-title">📋 Tous les dossiers</span>
+                <span class="status-card-count" id="compteurTotal">0</span>
+                <span class="status-card-hint">Afficher la liste complète</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Tableau Actif -->
     <div class="card card-custom mb-4">
         <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable">
@@ -468,6 +535,7 @@ let tousLesClients = [];
 let triDateAsc = true;
 let triRelanceAsc = true;
 let nombreContratsActifs = 0;
+let filtreStatutActif = 'tous';
 
 const PIECES_PERSONNELLES = [
     "Permis de conduire", 
@@ -601,7 +669,35 @@ function recalculerTitresContrats() {
 async function chargerDossiers() {
     let res = await fetch('/api/dossiers');
     tousLesClients = await res.json();
-    afficherTableau(tousLesClients);
+    const priorite = {rouge: 0, orange: 1, vert: 2};
+    tousLesClients.sort((a, b) => (priorite[a.niveau_urgence] ?? 3) - (priorite[b.niveau_urgence] ?? 3));
+    mettreAJourCompteursStatut();
+    filtrerTableaux();
+}
+
+function dossierComplet(cl) {
+    return (cl.texte_statut || '').startsWith('Complet');
+}
+
+function mettreAJourCompteursStatut() {
+    const compteurs = {rouge: 0, orange: 0, 'en-cours': 0, complet: 0, tous: tousLesClients.length};
+    tousLesClients.forEach(cl => {
+        if (cl.niveau_urgence === 'rouge') compteurs.rouge++;
+        else if (cl.niveau_urgence === 'orange') compteurs.orange++;
+        else if (dossierComplet(cl)) compteurs.complet++;
+        else compteurs['en-cours']++;
+    });
+
+    document.getElementById('compteurUrgent').textContent = compteurs.rouge;
+    document.getElementById('compteurRelance').textContent = compteurs.orange;
+    document.getElementById('compteurEnCours').textContent = compteurs['en-cours'];
+    document.getElementById('compteurComplets').textContent = compteurs.complet;
+    document.getElementById('compteurTotal').textContent = compteurs.tous;
+}
+
+function filtrerParStatut(filtre) {
+    filtreStatutActif = filtre;
+    filtrerTableaux();
 }
 
 function formatDateFR(dateStr) {
@@ -706,7 +802,7 @@ function trierParDateEffet() {
         let dateB = b.contrats.length ? new Date(b.contrats[0].date_effet) : new Date(0);
         return triDateAsc ? dateA - dateB : dateB - dateA;
     });
-    afficherTableau(tousLesClients);
+    filtrerTableaux();
 }
 
 function trierParDerniereRelance() {
@@ -716,22 +812,32 @@ function trierParDerniereRelance() {
         let dateB = b.derniere_relance ? new Date(b.derniere_relance) : new Date(0);
         return triRelanceAsc ? dateA - dateB : dateB - dateA;
     });
-    afficherTableau(tousLesClients);
+    filtrerTableaux();
 }
 
 function filtrerTableaux() {
     let terme = document.getElementById('recherche').value.toLowerCase().trim();
-    let mefiltrer = tousLesClients.filter(cl => 
-        cl.nom.toLowerCase().includes(terme) || 
-        cl.prenom.toLowerCase().includes(terme) || 
-        (cl.email && cl.email.toLowerCase().includes(terme)) ||
-        (cl.telephone && cl.telephone.includes(terme)) ||
-        cl.contrats.some(c => 
-            c.num_contrat.toLowerCase().includes(terme) || 
-            (c.immat && c.immat.toLowerCase().includes(terme))
-        )
-    );
-    afficherTableau(mefiltrer);
+    document.querySelectorAll('[data-status-card]').forEach(card => {
+        card.classList.toggle('active', card.dataset.statusCard === filtreStatutActif);
+        card.setAttribute('aria-pressed', card.dataset.statusCard === filtreStatutActif);
+    });
+
+    let dossiersFiltres = tousLesClients.filter(cl => {
+        if (filtreStatutActif === 'rouge' && cl.niveau_urgence !== 'rouge') return false;
+        if (filtreStatutActif === 'orange' && cl.niveau_urgence !== 'orange') return false;
+        if (filtreStatutActif === 'en-cours' && (cl.niveau_urgence !== 'vert' || dossierComplet(cl))) return false;
+        if (filtreStatutActif === 'complet' && !dossierComplet(cl)) return false;
+
+        return cl.nom.toLowerCase().includes(terme) ||
+            cl.prenom.toLowerCase().includes(terme) ||
+            (cl.email && cl.email.toLowerCase().includes(terme)) ||
+            (cl.telephone && cl.telephone.includes(terme)) ||
+            cl.contrats.some(c =>
+                c.num_contrat.toLowerCase().includes(terme) ||
+                (c.immat && c.immat.toLowerCase().includes(terme))
+            );
+    });
+    afficherTableau(dossiersFiltres);
 }
 
 async function enregistrerDossierClient() {
