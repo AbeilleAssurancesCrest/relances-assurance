@@ -430,6 +430,7 @@
         <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable">
             <span class="fw-bold text-warning fs-6">📁 Liste des Dossiers Client</span>
             <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+                <button type="button" class="btn btn-outline-success btn-sm text-nowrap" id="btnExportExcel" onclick="exporterExcel()">📥 Excel</button>
                 <input type="text" id="recherche" class="form-control form-control-sm" style="width: 280px;" placeholder="🔍 Rechercher (Nom, N° contrat, Immat...)" onkeyup="filtrerTableaux()">
                 <i class="bi bi-chevron-down text-warning ms-2"></i>
             </div>
@@ -673,6 +674,33 @@ async function chargerDossiers() {
     tousLesClients.sort((a, b) => (priorite[a.niveau_urgence] ?? 3) - (priorite[b.niveau_urgence] ?? 3));
     mettreAJourCompteursStatut();
     filtrerTableaux();
+}
+
+async function exporterExcel() {
+    const bouton = document.getElementById('btnExportExcel');
+    bouton.disabled = true;
+    bouton.textContent = '⏳ Préparation…';
+
+    try {
+        const response = await fetch('/api/export/excel');
+        if (!response.ok) throw new Error('Export impossible');
+
+        const fichier = await response.blob();
+        const url = URL.createObjectURL(fichier);
+        const lien = document.createElement('a');
+        lien.href = url;
+        lien.download = `sauvegarde_relances_assurance_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(lien);
+        lien.click();
+        lien.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error(error);
+        alert("L’export Excel n’a pas pu être créé. Réessaie dans un instant.");
+    } finally {
+        bouton.disabled = false;
+        bouton.textContent = '📥 Excel';
+    }
 }
 
 function dossierComplet(cl) {
