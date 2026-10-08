@@ -372,7 +372,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">NOM *</label>
-                            <input type="text" id="nom" class="form-control" placeholder="EX: DUPONT" oninput="verifierClientExistant()" required>
+                            <input type="text" id="nom" class="form-control" placeholder="EX: DUPONT" oninput="this.value = this.value.toLocaleUpperCase('fr-FR'); verifierClientExistant()" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">PRÉNOM *</label>
@@ -580,6 +580,15 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4" id="histoContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="notificationToast" class="toast text-bg-dark border-success" role="status" aria-live="polite" aria-atomic="true">
+    <div class="d-flex align-items-center">
+      <div id="notificationToastMessage" class="toast-body fw-semibold"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fermer"></button>
     </div>
   </div>
 </div>
@@ -949,6 +958,11 @@ function filtrerTableaux() {
     afficherTableau(dossiersFiltres);
 }
 
+function afficherNotification(message) {
+    document.getElementById('notificationToastMessage').textContent = message;
+    bootstrap.Toast.getOrCreateInstance(document.getElementById('notificationToast'), {delay: 3000}).show();
+}
+
 function normaliserIdentite(valeur) {
     return (valeur || '')
         .normalize('NFD')
@@ -1161,6 +1175,7 @@ async function marquerToutesPiecesRecues() {
     if (!response.ok) { alert('La mise à jour a échoué. Réessaie.'); return; }
     bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
     await chargerDossiers();
+    afficherNotification('Toutes les pièces sont validées ✓');
 }
 
 async function sauvegarderContratDetail() {
@@ -1168,14 +1183,17 @@ async function sauvegarderContratDetail() {
     let immat = document.getElementById('editImmat').value.toUpperCase();
     let pieces = Array.from(document.querySelectorAll('#editListePieces input:checked')).map(c => c.value);
 
-    await fetch('/api/contrats/update', {
+    const response = await fetch('/api/contrats/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ contrat_id: parseInt(id), immat: immat, pieces: pieces })
     });
 
+    if (!response.ok) { alert('Les modifications du contrat n’ont pas pu être enregistrées.'); return; }
+
     bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
-    chargerDossiers();
+    await chargerDossiers();
+    afficherNotification('Pièces justificatives mises à jour ✓');
 }
 
 function ouvrirCommentaire(id, commActuel) {
@@ -1223,6 +1241,7 @@ async function sauvegarderCoordonnees() {
     }
     bootstrap.Modal.getInstance(document.getElementById('modalCoordonnees')).hide();
     await chargerDossiers();
+    afficherNotification('Coordonnées mises à jour ✓');
 }
 
 function supprimerDepuisBouton(bouton) {
