@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import (init_db, add_client_avec_contrats, get_all_clients, 
-                      log_relance, get_historique, update_statut, delete_client, 
+                      log_relance, get_historique, delete_client,
                       update_contrat_details, update_commentaire)
 
 app = FastAPI()
@@ -43,10 +43,6 @@ class RelanceSchema(BaseModel):
     email: str
     pieces: list[str]
 
-class StatutSchema(BaseModel):
-    client_id: int
-    statut: str
-
 class ContratUpdateSchema(BaseModel):
     contrat_id: int
     immat: str = ""
@@ -80,11 +76,6 @@ def modify_commentaire(data: CommentaireUpdateSchema):
     update_commentaire(data.client_id, data.commentaire)
     return {"status": "ok"}
 
-@app.post("/api/statut")
-def change_statut(data: StatutSchema):
-    update_statut(data.client_id, data.statut)
-    return {"status": "ok"}
-
 @app.delete("/api/dossiers/{client_id}")
 def remove_dossier(client_id: int):
     delete_client(client_id)
@@ -92,7 +83,8 @@ def remove_dossier(client_id: int):
 
 @app.post("/api/relancer")
 def relancer(data: RelanceSchema):
-    log_relance(data.client_id, data.email, data.pieces)
+    if not log_relance(data.client_id, data.email, data.pieces):
+        raise HTTPException(status_code=502, detail="Impossible d'enregistrer la relance")
     return {"status": "ok"}
 
 @app.get("/api/historique/{client_id}")
