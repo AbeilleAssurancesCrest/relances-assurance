@@ -348,11 +348,11 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">NOM *</label>
-                            <input type="text" id="nom" class="form-control" placeholder="EX: DUPONT" required>
+                            <input type="text" id="nom" class="form-control" placeholder="EX: DUPONT" oninput="verifierClientExistant()" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">PRÉNOM *</label>
-                            <input type="text" id="prenom" class="form-control" placeholder="ex: Jean" required>
+                            <input type="text" id="prenom" class="form-control" placeholder="ex: Jean" oninput="verifierClientExistant()" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold small text-light-custom">EMAIL</label>
@@ -362,6 +362,11 @@
                             <label class="form-label fw-bold small text-light-custom">TÉLÉPHONE</label>
                             <input type="text" id="telephone" class="form-control" placeholder="ex: 0612345678">
                         </div>
+                    </div>
+
+                    <div id="clientExistantAlerte" class="alert alert-warning mt-3 d-none" role="status">
+                        <div id="clientExistantMessage" class="fw-bold mb-2"></div>
+                        <div id="clientExistantChoix" class="d-flex flex-wrap gap-2"></div>
                     </div>
 
                     <hr class="my-4" style="border-color: var(--chrome-border);">
@@ -379,7 +384,7 @@
                     </div>
 
                     <div class="text-end mt-4">
-                        <button type="submit" class="btn btn-abeille px-4">Enregistrer le Client & ses Contrats</button>
+                        <button type="submit" id="btnEnregistrerDossier" class="btn btn-abeille px-4">Enregistrer le Client & ses Contrats</button>
                     </div>
                 </form>
             </div>
@@ -567,6 +572,7 @@ function reinitialiserFormulaire() {
     document.getElementById('conteneurContrats').innerHTML = '';
     nombreContratsActifs = 0;
     ajouterBlocContrat();
+    verifierClientExistant();
 }
 
 function ajouterBlocContrat() {
@@ -674,6 +680,7 @@ async function chargerDossiers() {
     tousLesClients.sort((a, b) => (priorite[a.niveau_urgence] ?? 3) - (priorite[b.niveau_urgence] ?? 3));
     mettreAJourCompteursStatut();
     filtrerTableaux();
+    verifierClientExistant();
 }
 
 async function exporterExcel() {
@@ -868,49 +875,135 @@ function filtrerTableaux() {
     afficherTableau(dossiersFiltres);
 }
 
-async function enregistrerDossierClient() {
-    let listeContrats = [];
-    let erreurFormatNum = false;
+function normaliserIdentite(valeur) {
+    return (valeur || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLocaleLowerCase('fr');
+}
 
-    document.querySelectorAll('.contrat-block').forEach(b => {
-        let numInput = b.querySelector('.contrat-num');
-        let dateInput = b.querySelector('.contrat-date');
-        let typeVal = b.querySelector('.contrat-type').value;
-        
-        let num = numInput.value.trim();
-        let date = dateInput.value;
-        let immat = b.querySelector('.contrat-immat').value.trim().toUpperCase();
+function clientsCorrespondants(nom, prenom) {
+    const nomNormalise = normaliserIdentite(nom);
+    const prenomNormalise = normaliserIdentite(prenom);
+    if (!nomNormalise || !prenomNormalise) return [];
 
-        let selMarque = b.querySelector('.contrat-marque-select');
-        let marque = '';
-        if(selMarque && selMarque.value) {
-            marque = (selMarque.value === 'AUTRE_VALEUR') 
-                ? b.querySelector('.contrat-marque-custom').value.trim() 
-                : selMarque.value;
-        }
+    return tousLesClients.filter(client =>
+        normaliserIdentite(client.nom) === nomNormalise &&
+        normaliserIdentite(client.prenom) === prenomNormalise
+    );
+}
 
-        let pieces = Array.from(b.querySelectorAll('.contrat-pieces input:checked')).map(c => c.value);
+function verifierClientExistant() {
+    const nom = document.getElementById('nom').value;
+    const prenom = document.getElementById('prenom').value;
+    const alerte = document.getElementById('clientExistantAlerte');
+    const message = document.getElementById('clientExistantMessage');
+    const choix = document.getElementById('clientExistantChoix');
+    const boutonEnregistrer = document.getElementById('btnEnregistrerDossier');
+    if (!alerte || !boutonEnregistrer) return;
 
-        if(num.length !== 8 || isNaN(num)) {
-            erreurFormatNum = true;
-        } else if(num && date) {
-            listeContrats.push({ num_contrat: num, type_vehicule: typeVal, date_effet: date, marque: marque, immat: immat, pieces: pieces });
-        }
-    });
+    const correspondances = clientsCorrespondants(nom, prenom);
+    choix.replaceChildren();
+    boutonEnregistrer.disabled = correspondances.length > 0;
+    boutonEnregistrer.textContent = correspondances.length
+        ? 'Client déjà enregistré'
+        : 'Enregistrer le Client & ses Contrats';
 
-    if(erreurFormatNum) {
-        alert("Attention : Le N° de Contrat doit obligatoirement comporter exactement 8 chiffres.");
+    if (!correspondances.length) {
+        alerte.classList.add('d-none');
         return;
     }
 
-    if(listeContrats.length === 0) {
-        alert("Attention : Veuillez saisir au moins un contrat valide.");
+    alerte.classList.remove('d-none');
+    message.textContent = 'Ce nom et prénom existent déjà. Choisis la fiche concernée pour ajouter le contrat sans recréer le client :';
+
+    correspondances.forEach(client => {
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'btn btn-dark btn-sm border-warning';
+        const numeros = (client.contrats || []).map(contrat => contrat.num_contrat).join(', ') || 'aucun contrat';
+        const coordonnees = [client.email, client.telephone].filter(Boolean).join(' · ');
+        bouton.textContent = `Ajouter à ${client.prenom} ${client.nom} — ${coordonnees || 'coordonnées absentes'} — Contrats : ${numeros}`;
+        bouton.addEventListener('click', () => ajouterContratsAuClient(client.id));
+        choix.appendChild(bouton);
+    });
+}
+
+function collecterContratsSaisis() {
+    const listeContrats = [];
+    let erreurFormatNum = false;
+
+    document.querySelectorAll('.contrat-block').forEach(bloc => {
+        const num = bloc.querySelector('.contrat-num').value.trim();
+        const date = bloc.querySelector('.contrat-date').value;
+        const type = bloc.querySelector('.contrat-type').value;
+        const immat = bloc.querySelector('.contrat-immat').value.trim().toUpperCase();
+        const selectMarque = bloc.querySelector('.contrat-marque-select');
+        let marque = '';
+        if (selectMarque && selectMarque.value) {
+            marque = selectMarque.value === 'AUTRE_VALEUR'
+                ? bloc.querySelector('.contrat-marque-custom').value.trim()
+                : selectMarque.value;
+        }
+        const pieces = Array.from(bloc.querySelectorAll('.contrat-pieces input:checked')).map(casePiece => casePiece.value);
+
+        if (num.length !== 8 || !/^\d{8}$/.test(num)) {
+            erreurFormatNum = true;
+        } else if (date) {
+            listeContrats.push({num_contrat: num, type_vehicule: type, date_effet: date, marque, immat, pieces});
+        }
+    });
+
+    if (erreurFormatNum) {
+        alert('Attention : Le N° de Contrat doit obligatoirement comporter exactement 8 chiffres.');
+        return null;
+    }
+    if (!listeContrats.length) {
+        alert('Attention : Veuillez saisir au moins un contrat valide.');
+        return null;
+    }
+    return listeContrats;
+}
+
+function messageDoublonContrat(listeContrats) {
+    const numerosVus = new Set();
+    for (const contrat of listeContrats) {
+        const numero = contrat.num_contrat;
+        if (numerosVus.has(numero)) return `Le contrat ${numero} est saisi plusieurs fois.`;
+        numerosVus.add(numero);
+
+        const clientProprietaire = tousLesClients.find(client =>
+            (client.contrats || []).some(contratExistant => String(contratExistant.num_contrat).trim() === numero)
+        );
+        if (clientProprietaire) {
+            return `Le contrat ${numero} est déjà enregistré dans le dossier de ${clientProprietaire.prenom} ${clientProprietaire.nom}.`;
+        }
+    }
+    return '';
+}
+
+async function enregistrerDossierClient() {
+    const nom = document.getElementById('nom').value.trim();
+    const prenom = document.getElementById('prenom').value.trim();
+    if (clientsCorrespondants(nom, prenom).length) {
+        verifierClientExistant();
+        alert('Ce client existe déjà. Choisis sa fiche dans le message jaune pour y ajouter le contrat.');
+        return;
+    }
+
+    const listeContrats = collecterContratsSaisis();
+    if (!listeContrats) return;
+    const doublon = messageDoublonContrat(listeContrats);
+    if (doublon) {
+        alert(doublon);
         return;
     }
 
     let data = {
-        nom: document.getElementById('nom').value,
-        prenom: document.getElementById('prenom').value,
+        nom,
+        prenom,
         email: document.getElementById('email').value,
         telephone: document.getElementById('telephone').value,
         commentaire: document.getElementById('commentaire').value,
@@ -925,10 +1018,37 @@ async function enregistrerDossierClient() {
 
     if(res.ok) {
         reinitialiserFormulaire();
-        chargerDossiers();
+        await chargerDossiers();
     } else {
-        alert("Erreur lors de l'enregistrement. Vérifiez vos données.");
+        const erreur = await res.json().catch(() => ({}));
+        alert(erreur.detail || "Erreur lors de l'enregistrement. Vérifiez vos données.");
     }
+}
+
+async function ajouterContratsAuClient(clientId) {
+    const listeContrats = collecterContratsSaisis();
+    if (!listeContrats) return;
+    const doublon = messageDoublonContrat(listeContrats);
+    if (doublon) {
+        alert(doublon);
+        return;
+    }
+
+    const response = await fetch(`/api/dossiers/${clientId}/contrats`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({contrats: listeContrats})
+    });
+
+    if (!response.ok) {
+        const erreur = await response.json().catch(() => ({}));
+        alert(erreur.detail || "Impossible d'ajouter le contrat à ce dossier.");
+        return;
+    }
+
+    alert('Contrat ajouté au dossier existant.');
+    reinitialiserFormulaire();
+    await chargerDossiers();
 }
 
 function ouvrirEditeurContrat(contrat) {
