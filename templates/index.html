@@ -151,6 +151,7 @@
             color: var(--chrome-text) !important;
             border-color: var(--chrome-border) !important;
             background-color: var(--chrome-card) !important;
+            min-width: 1080px;
         }
 
         .table > :not(caption) > * > * {
@@ -166,7 +167,21 @@
             font-family: 'Google Sans', sans-serif;
             font-size: 0.82rem;
             letter-spacing: 0.5px;
+            white-space: nowrap;
+            padding-top: 0.9rem;
+            padding-bottom: 0.9rem;
         }
+
+        .table > tbody > tr > td {
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+            vertical-align: middle;
+        }
+
+        .table .sortable { cursor: pointer; user-select: none; }
+        .table .sortable:hover { color: var(--abeille-yellow) !important; }
+        .actions-cell { min-width: 175px; }
+        .search-input { width: min(100%, 340px); }
 
         .table-hover tbody tr:hover > * { 
             background-color: var(--chrome-card-hover) !important; 
@@ -435,9 +450,9 @@
     <div class="card card-custom mb-4">
         <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable">
             <span class="fw-bold text-warning fs-6">📁 Liste des Dossiers Client</span>
-            <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+            <div class="d-flex flex-wrap align-items-center gap-2" onclick="event.stopPropagation()">
                 <button type="button" class="btn btn-outline-success btn-sm text-nowrap" id="btnExportExcel" onclick="exporterExcel()">📥 Excel</button>
-                <input type="text" id="recherche" class="form-control form-control-sm" style="width: 280px;" placeholder="🔍 Rechercher (Nom, N° contrat, Immat...)" onkeyup="filtrerTableaux()">
+                <input type="search" id="recherche" class="form-control form-control-sm search-input" aria-label="Rechercher un dossier" placeholder="🔍 Rechercher un dossier…" oninput="filtrerTableaux()">
                 <i class="bi bi-chevron-down text-warning ms-2"></i>
             </div>
         </div>
@@ -448,9 +463,9 @@
                         <thead>
                             <tr class="small text-uppercase table-head-chrome">
                                 <th class="ps-4">N° Contrat(s)</th>
-                                <th>Client</th>
+                                <th class="sortable" onclick="trierParNom()" title="Trier par ordre alphabétique">Client A–Z ⇅</th>
                                 <th>Contact</th>
-                                <th class="sortable" style="cursor:pointer;" onclick="trierParDateEffet()">Date(s) d'effet ⇕</th>
+                                <th>Date(s) d'effet</th>
                                 <th class="text-center">Pièces attendues</th>
                                 <th class="sortable" style="cursor:pointer;" onclick="trierParDerniereRelance()">Dernière relance ⇕</th>
                                 <th>Statut</th>
@@ -563,8 +578,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let tousLesClients = [];
-let triDateAsc = true;
 let triRelanceAsc = true;
+let triNomAsc = false;
 let nombreContratsActifs = 0;
 let filtreStatutActif = 'tous';
 
@@ -844,10 +859,12 @@ function afficherTableau(clients) {
                 <td><small class="text-light-custom">${dateRelance}</small></td>
                 <td><span class="badge ${badgeClass} badge-pill-custom">${cl.texte_statut}</span></td>
                 <td class="text-center pe-4">
+                  <div class="actions-cell d-flex flex-wrap justify-content-center gap-1">
                     <button data-relance="${donneesRelance}" onclick="envoyerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
                     <button data-relance="${donneesRelance}" onclick="confirmerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-outline-success btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''} title="À cliquer après l’envoi effectif dans Gmail">✅ Mail envoyé</button>
                     <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
                     <button data-suppression="${encodeURIComponent(JSON.stringify([cl.id, `${cl.prenom} ${cl.nom}`, cl.contrats.map(c => c.num_contrat)]))}" onclick="supprimerDepuisBouton(this)" class="btn btn-outline-danger btn-sm my-1 ms-1" title="Supprimer ce dossier">🗑️</button>
+                  </div>
                 </td>
             </tr>
         `;
@@ -856,12 +873,12 @@ function afficherTableau(clients) {
     document.getElementById('tableBody').innerHTML = htmlActifs || '<tr><td colspan="8" class="text-center p-4 text-light-custom">Aucun dossier actif pour le moment.</td></tr>';
 }
 
-function trierParDateEffet() {
-    triDateAsc = !triDateAsc;
+function trierParNom() {
+    triNomAsc = !triNomAsc;
     tousLesClients.sort((a, b) => {
-        let dateA = a.contrats.length ? new Date(a.contrats[0].date_effet) : new Date(0);
-        let dateB = b.contrats.length ? new Date(b.contrats[0].date_effet) : new Date(0);
-        return triDateAsc ? dateA - dateB : dateB - dateA;
+        const nomA = `${a.nom || ''} ${a.prenom || ''}`.trim();
+        const nomB = `${b.nom || ''} ${b.prenom || ''}`.trim();
+        return nomA.localeCompare(nomB, 'fr', {sensitivity: 'base'}) * (triNomAsc ? 1 : -1);
     });
     filtrerTableaux();
 }
@@ -877,7 +894,8 @@ function trierParDerniereRelance() {
 }
 
 function filtrerTableaux() {
-    let terme = document.getElementById('recherche').value.toLowerCase().trim();
+    let terme = normaliserIdentite(document.getElementById('recherche').value);
+    let telephoneTerme = terme.replace(/\D/g, '');
     document.querySelectorAll('[data-status-card]').forEach(card => {
         card.classList.toggle('active', card.dataset.statusCard === filtreStatutActif);
         card.setAttribute('aria-pressed', card.dataset.statusCard === filtreStatutActif);
@@ -889,13 +907,14 @@ function filtrerTableaux() {
         if (filtreStatutActif === 'en-cours' && (cl.niveau_urgence !== 'vert' || dossierComplet(cl))) return false;
         if (filtreStatutActif === 'complet' && !dossierComplet(cl)) return false;
 
-        return cl.nom.toLowerCase().includes(terme) ||
-            cl.prenom.toLowerCase().includes(terme) ||
-            (cl.email && cl.email.toLowerCase().includes(terme)) ||
-            (cl.telephone && cl.telephone.includes(terme)) ||
+        return normaliserIdentite(cl.nom).includes(terme) ||
+            normaliserIdentite(cl.prenom).includes(terme) ||
+            normaliserIdentite(cl.email).includes(terme) ||
+            normaliserIdentite(cl.telephone).includes(terme) ||
+            (telephoneTerme && (cl.telephone || '').replace(/\D/g, '').includes(telephoneTerme)) ||
             cl.contrats.some(c =>
-                c.num_contrat.toLowerCase().includes(terme) ||
-                (c.immat && c.immat.toLowerCase().includes(terme))
+                normaliserIdentite(c.num_contrat).includes(terme) ||
+                normaliserIdentite(c.immat).includes(terme)
             );
     });
     afficherTableau(dossiersFiltres);
