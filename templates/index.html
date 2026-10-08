@@ -743,6 +743,13 @@ function afficherTableau(clients) {
             let archiveBtnHTML = dossierEstComplet 
                 ? `<button onclick="changerStatut(${cl.id}, 'Archivé')" class="btn btn-action-archive btn-sm my-1">📦 Archiver</button>`
                 : `<button class="btn btn-chrome-secondary btn-sm my-1 opacity-25" disabled title="Le dossier doit être complet pour être archivé">📦 Archiver</button>`;
+            let donneesRelance = encodeURIComponent(JSON.stringify([
+                cl.id,
+                cl.email,
+                cl.nom,
+                cl.contrats,
+                toutesPiecesFormatees
+            ]));
 
             htmlActifs += `
                 <tr class="${classRow}">
@@ -754,7 +761,7 @@ function afficherTableau(clients) {
                     <td><small class="text-light-custom">${dateRelance}</small></td>
                     <td><span class="badge ${badgeClass} badge-pill-custom">${cl.texte_statut}</span></td>
                     <td class="text-center pe-4">
-                        <button onclick="envoyerRelance(${cl.id}, '${cl.email}', '${cl.nom}', ${JSON.stringify(cl.contrats).replace(/"/g, '&quot;')}, ${JSON.stringify(toutesPiecesFormatees).replace(/"/g, '&quot;')})" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
+                        <button data-relance="${donneesRelance}" onclick="envoyerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
                         ${archiveBtnHTML}
                         <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
                         <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm my-1 ms-1">🗑️</button>
@@ -957,14 +964,6 @@ async function supprimerClient(id) {
 }
 
 async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
-    await fetch('/api/relancer', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({client_id: id, email: email, pieces: toutesPiecesFormatees})
-    });
-
-    let sujet = encodeURIComponent("RELANCE JUSTIFICATIFS");
-
     let labelContrat = contrats.length > 1 ? "vos contrats" : "votre contrat";
     let explicationContrats = contrats.map(c => {
         let auto = [c.marque, c.immat].filter(Boolean).join(' ');
@@ -974,10 +973,17 @@ async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
 
     let listeTexte = toutesPiecesFormatees.map(p => " - " + p).join("\n");
     let texteBrut = `Bonjour Mme ou Mr ${nom},\n\nSauf erreur de ma part il me manque des justificatifs concernant ${labelContrat} ${explicationContrats} :\n\n${listeTexte}\n\nBelle journée à vous, cordialement\n`;
-    let corps = encodeURIComponent(texteBrut);
+    const sujet = "RELANCE JUSTIFICATIFS";
+    const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(email) + '&su=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(texteBrut);
 
-    const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(email) + '&su=' + encodeURIComponent(sujet) + '&body=' + encodeURIComponent(corps);
+    // Ouvrir le brouillon avant tout await évite le blocage des fenêtres pop-up par le navigateur.
     window.open(gmailUrl, '_blank');
+
+    fetch('/api/relancer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({client_id: id, email: email, pieces: toutesPiecesFormatees})
+    }).catch(error => console.error('Impossible d’enregistrer la relance :', error));
 
     chargerDossiers();
 }
