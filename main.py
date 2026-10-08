@@ -116,7 +116,9 @@ def create_dossier(data: ClientSchema):
         raise HTTPException(status_code=409, detail="Ce client existe déjà. Ajoute le contrat à sa fiche existante.")
     verifier_numeros_contrat(data.contrats, clients_existants)
     contrats_list = [c.dict() for c in data.contrats]
-    add_client_avec_contrats(data.nom, data.prenom, data.email, data.telephone, data.commentaire, contrats_list)
+    for contrat in contrats_list:
+        contrat["immat"] = (contrat.get("immat") or "").strip().upper()
+    add_client_avec_contrats(data.nom.strip().upper(), data.prenom, data.email, data.telephone, data.commentaire, contrats_list)
     return {"status": "ok"}
 
 @app.post("/api/dossiers/{client_id}/contrats")
@@ -128,13 +130,15 @@ def add_contracts_to_existing_client(client_id: int, data: AjouterContratsSchema
         raise HTTPException(status_code=400, detail="Ajoute au moins un contrat.")
     verifier_numeros_contrat(data.contrats, clients_existants)
     contrats_list = [c.dict() for c in data.contrats]
+    for contrat in contrats_list:
+        contrat["immat"] = (contrat.get("immat") or "").strip().upper()
     if not add_contrats_a_client(client_id, contrats_list):
         raise HTTPException(status_code=502, detail="Impossible d'ajouter le contrat au dossier.")
     return {"status": "ok"}
 
 @app.post("/api/contrats/update")
 def modify_contrat(data: ContratUpdateSchema):
-    update_contrat_details(data.contrat_id, data.immat, data.pieces)
+    update_contrat_details(data.contrat_id, data.immat.strip().upper(), data.pieces)
     return {"status": "ok"}
 
 @app.post("/api/dossiers/update_commentaire")
