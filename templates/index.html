@@ -137,22 +137,78 @@
         }
 
         .piece-checkbox-card {
-            background: var(--chrome-input);
-            border: 1px solid var(--chrome-border);
-            border-radius: 8px;
-            padding: 7px 10px;
+            background: linear-gradient(145deg, #252629, #202124);
+            border: 1px solid #3b3d42;
+            border-radius: 10px;
+            min-height: 48px;
+            padding: 9px 12px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 11px;
             cursor: pointer;
-            transition: all 0.15s ease;
-            font-size: 0.88rem;
+            transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+            font-family: 'Roboto', -apple-system, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.35;
+            font-weight: 500;
             color: var(--chrome-text);
         }
 
         .piece-checkbox-card:hover {
+            border-color: rgba(255, 204, 0, 0.65);
+            background: #2a2b2e;
+            transform: translateY(-1px);
+        }
+
+        .piece-checkbox-card.is-selected {
             border-color: var(--abeille-yellow);
-            background-color: #28292c;
+            background: linear-gradient(145deg, rgba(255, 204, 0, 0.14), rgba(255, 204, 0, 0.07));
+            box-shadow: inset 0 0 0 1px rgba(255, 204, 0, 0.12);
+        }
+
+        .piece-checkbox-card:focus-within {
+            outline: 2px solid rgba(255, 204, 0, 0.42);
+            outline-offset: 2px;
+        }
+
+        .piece-checkbox-card input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 19px;
+            height: 19px;
+            flex: 0 0 19px;
+            margin: 0;
+            border: 1.5px solid #777b83;
+            border-radius: 5px;
+            background: #17181a;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .piece-checkbox-card input[type="checkbox"]::before {
+            content: "";
+            width: 5px;
+            height: 9px;
+            border: solid #202124;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) scale(0);
+            transition: transform 0.12s ease;
+            margin-top: -2px;
+        }
+
+        .piece-checkbox-card input[type="checkbox"]:checked {
+            border-color: var(--abeille-yellow);
+            background: var(--abeille-yellow);
+        }
+
+        .piece-checkbox-card input[type="checkbox"]:checked::before {
+            transform: rotate(45deg) scale(1);
+        }
+
+        .piece-checkbox-card span {
+            flex: 1;
         }
 
         /* Tableaux Sombres */
@@ -518,7 +574,8 @@
                 <input type="text" id="editImmat" class="form-control" oninput="this.value = this.value.toUpperCase()">
             </div>
         </div>
-        <label class="form-label fw-bold text-danger mt-2">📋 Modifier les pièces manquantes :</label>
+        <label class="form-label fw-bold text-warning mt-2 mb-1">📋 Pièces manquantes</label>
+        <div class="small text-light-custom opacity-75 mb-2">Coche les justificatifs encore attendus.</div>
         <div class="p-3 rounded-3" style="background: #171717; border: 1px solid var(--chrome-border);" id="editListePieces"></div>
       </div>
       <div class="modal-footer">
@@ -690,7 +747,8 @@ function ajouterBlocContrat() {
                     <input type="text" class="form-control form-control-sm contrat-immat" placeholder="ex: AA-123-BB" oninput="this.value = this.value.toUpperCase()">
                 </div>
             </div>
-            <label class="form-label fw-bold small text-danger mb-2">📋 Pièces manquantes pour ce contrat :</label>
+            <label class="form-label fw-bold small text-warning mb-1">📋 Pièces manquantes</label>
+            <div class="small text-light-custom opacity-75 mb-2">Coche les justificatifs encore attendus.</div>
             <div class="row g-2 contrat-pieces" id="piecesContrat_${idUnique}"></div>
         </div>
     `;
@@ -717,7 +775,7 @@ function mettreAJourChampsType(idUnique) {
     let htmlPieces = '';
 
     items.forEach(p => {
-        htmlPieces += `<div class="col-md-4"><label class="piece-checkbox-card"><input type="checkbox" value="${p}"> <span>${p}</span></label></div>`;
+        htmlPieces += `<div class="col-md-4"><label class="piece-checkbox-card"><input type="checkbox" value="${p}" onchange="this.closest('.piece-checkbox-card').classList.toggle('is-selected', this.checked)"> <span>${p}</span></label></div>`;
     });
 
     piecesContainer.innerHTML = htmlPieces;
@@ -1157,7 +1215,8 @@ function ouvrirEditeurContrat(contrat) {
 
     items.forEach(p => {
         let isChecked = contrat.pieces_manquantes.includes(p) ? 'checked' : '';
-        html += `<div class="col-md-6 mb-2"><label class="piece-checkbox-card"><input type="checkbox" value="${p}" ${isChecked}> <span>${p}</span></label></div>`;
+        let selectedClass = isChecked ? ' is-selected' : '';
+        html += `<div class="col-md-6 mb-2"><label class="piece-checkbox-card${selectedClass}"><input type="checkbox" value="${p}" ${isChecked} onchange="this.closest('.piece-checkbox-card').classList.toggle('is-selected', this.checked)"> <span>${p}</span></label></div>`;
     });
 
     container.innerHTML = `<div class="row g-2">${html}</div>`;
