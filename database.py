@@ -67,6 +67,33 @@ def add_client_avec_contrats(nom, prenom, email, telephone, commentaire, liste_c
                 }
                 requests.post(url_contrat, headers=get_headers(), json=payload_contrat)
 
+def add_contrats_a_client(client_id, liste_contrats):
+    if not SUPABASE_KEY:
+        return False
+
+    url_client = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}&select=id"
+    response_client = requests.get(url_client, headers=get_headers())
+    if response_client.status_code != 200 or not response_client.json():
+        return False
+
+    url_contrats = f"{SUPABASE_URL}/rest/v1/contrats"
+    payloads = []
+    for contrat in liste_contrats:
+        pieces_json = json.dumps(contrat.get('pieces', []))
+        payloads.append({
+            "client_id": client_id,
+            "num_contrat": contrat['num_contrat'],
+            "type_vehicule": contrat.get('type_vehicule', 'Voiture'),
+            "date_effet": contrat['date_effet'],
+            "marque": contrat.get('marque', ''),
+            "immat": contrat.get('immat', ''),
+            "pieces_manquantes": pieces_json,
+            "pieces_initiales": pieces_json
+        })
+
+    response = requests.post(url_contrats, headers=get_headers(), json=payloads)
+    return response.status_code in (200, 201)
+
 def get_all_clients():
     if not SUPABASE_KEY:
         return []
