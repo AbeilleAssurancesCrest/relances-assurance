@@ -169,6 +169,12 @@ def update_commentaire(client_id, commentaire):
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
     requests.patch(url, headers=get_headers(), json={"commentaire": commentaire})
 
+def update_coordonnees(client_id, email, telephone):
+    if not SUPABASE_KEY: return False
+    url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
+    response = requests.patch(url, headers=get_headers(), json={"email": email, "telephone": telephone})
+    return response.ok
+
 def delete_client(client_id):
     if not SUPABASE_KEY: return
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
