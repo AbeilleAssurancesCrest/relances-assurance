@@ -57,6 +57,15 @@
             font-family: 'Google Sans', sans-serif;
         }
 
+        .collapse-chevron {
+            transition: transform 0.2s ease;
+            flex: 0 0 auto;
+        }
+
+        .collapse-chevron.is-open {
+            transform: rotate(180deg);
+        }
+
         .card-body-chrome {
             background-color: var(--chrome-card) !important;
             color: var(--chrome-text) !important;
@@ -353,9 +362,9 @@
 
     <!-- Formulaire Nouveau Client -->
     <div class="card card-custom mb-4">
-        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseForm">
+        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseForm" aria-expanded="true" role="button" tabindex="0">
             <span class="fs-6">➕ Nouveau Dossier Client</span>
-            <i class="bi bi-chevron-down"></i>
+            <i class="bi bi-chevron-down collapse-chevron is-open" aria-hidden="true"></i>
         </div>
         <div id="collapseForm" class="collapse show">
             <div class="card-body card-body-chrome p-4">
@@ -448,12 +457,12 @@
 
     <!-- Tableau Actif -->
     <div class="card card-custom mb-4">
-        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable">
+        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTable" aria-expanded="true" role="button" tabindex="0">
             <span class="fw-bold text-warning fs-6">📁 Liste des Dossiers Client</span>
             <div class="d-flex flex-wrap align-items-center gap-2" onclick="event.stopPropagation()">
                 <button type="button" class="btn btn-outline-success btn-sm text-nowrap" id="btnExportExcel" onclick="exporterExcel()">📥 Excel</button>
                 <input type="search" id="recherche" class="form-control form-control-sm search-input" aria-label="Rechercher un dossier" placeholder="🔍 Rechercher un dossier…" oninput="filtrerTableaux()">
-                <i class="bi bi-chevron-down text-warning ms-2"></i>
+                <i class="bi bi-chevron-down text-warning ms-2 collapse-chevron is-open" aria-hidden="true"></i>
             </div>
         </div>
         <div id="collapseTable" class="collapse show">
@@ -582,6 +591,26 @@ let triRelanceAsc = true;
 let triNomAsc = false;
 let nombreContratsActifs = 0;
 let filtreStatutActif = 'tous';
+
+document.querySelectorAll('.card-header-chrome[data-bs-toggle="collapse"]').forEach(entete => {
+    const cible = document.querySelector(entete.dataset.bsTarget);
+    const fleche = entete.querySelector('.collapse-chevron');
+    if (!cible || !fleche) return;
+
+    const actualiserFleche = ouvert => {
+        fleche.classList.toggle('is-open', ouvert);
+        entete.setAttribute('aria-expanded', String(ouvert));
+    };
+    actualiserFleche(cible.classList.contains('show'));
+    cible.addEventListener('shown.bs.collapse', () => actualiserFleche(true));
+    cible.addEventListener('hidden.bs.collapse', () => actualiserFleche(false));
+    entete.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (event.target.closest('button, input')) return;
+        event.preventDefault();
+        bootstrap.Collapse.getOrCreateInstance(cible).toggle();
+    });
+});
 
 const PIECES_PERSONNELLES = [
     "Permis de conduire", 
