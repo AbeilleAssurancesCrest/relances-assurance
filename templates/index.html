@@ -257,18 +257,6 @@
             color: #000;
         }
 
-        .btn-action-archive {
-            background-color: #1e8e3e;
-            color: #ffffff;
-            font-weight: 600;
-            border: none;
-            border-radius: 6px;
-        }
-        .btn-action-archive:hover {
-            background-color: #34a853;
-            color: #ffffff;
-        }
-
         .btn-action-proof {
             background-color: #3c4043;
             color: #8ab4f8;
@@ -402,33 +390,6 @@
         </div>
     </div>
 
-    <!-- Tableau Archivé -->
-    <div class="card card-custom">
-        <div class="card-header card-header-chrome d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseArchive">
-            <span class="fw-bold text-warning fs-6">📦 Dossiers Archivés</span>
-            <i class="bi bi-chevron-down text-warning"></i>
-        </div>
-        <div id="collapseArchive" class="collapse">
-            <div class="card-body card-body-chrome p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr class="small text-uppercase table-head-chrome">
-                                <th class="ps-4">N° Contrat(s)</th>
-                                <th>Client</th>
-                                <th>Contact</th>
-                                <th>Date(s) d'effet</th>
-                                <th class="text-center">Justificatifs reçus</th>
-                                <th class="text-center pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableArchiveBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <!-- Modal Modif/Consultation Contrat -->
@@ -465,19 +426,6 @@
       <div class="modal-footer">
         <button type="button" onclick="sauvegarderContratDetail()" class="btn btn-abeille">Sauvegarder les modifications</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Consultation Pièces Reçues Archive -->
-<div class="modal fade" id="modalArchivePieces" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold text-success app-title">✅ Justificatifs Reçus & Validés</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-4" id="archiveContent"></div>
     </div>
   </div>
 </div>
@@ -665,7 +613,6 @@ function formatDateFR(dateStr) {
 
 function afficherTableau(clients) {
     let htmlActifs = '';
-    let htmlArchives = '';
 
     clients.forEach(cl => {
         let classRow = '';
@@ -722,57 +669,34 @@ function afficherTableau(clients) {
             ...piecesContratsList
         ];
 
-        if(cl.statut === 'Archivé') {
-            htmlArchives += `
-                <tr>
-                    <td class="ps-4">${contratsHTML}</td>
-                    <td><span class="client-nom-highlight">${cl.nom}</span> <span class="text-light-custom">${cl.prenom}</span> ${btnCommentaire}</td>
-                    <td>${contactInfo || '<small class="text-light-custom">-</small>'}</td>
-                    <td>${datesEffetHTML}</td>
-                    <td class="text-center">
-                        <button onclick="ouvrirPiecesArchives(${JSON.stringify(cl.contrats).replace(/"/g, '&quot;')})" class="btn btn-outline-success btn-sm fw-bold">👁️ Pièces reçues</button>
-                    </td>
-                    <td class="text-center pe-4">
-                        <button onclick="changerStatut(${cl.id}, 'En attente')" class="btn btn-chrome-secondary btn-sm">🔄 Désarchiver</button>
-                        <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm ms-1">📜 Preuve</button>
-                        <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm ms-1">🗑️</button>
-                    </td>
-                </tr>
-            `;
-        } else {
-            let archiveBtnHTML = dossierEstComplet 
-                ? `<button onclick="changerStatut(${cl.id}, 'Archivé')" class="btn btn-action-archive btn-sm my-1">📦 Archiver</button>`
-                : `<button class="btn btn-chrome-secondary btn-sm my-1 opacity-25" disabled title="Le dossier doit être complet pour être archivé">📦 Archiver</button>`;
-            let donneesRelance = encodeURIComponent(JSON.stringify([
-                cl.id,
-                cl.email,
-                cl.nom,
-                cl.contrats,
-                toutesPiecesFormatees
-            ]));
+        let donneesRelance = encodeURIComponent(JSON.stringify([
+            cl.id,
+            cl.email,
+            cl.nom,
+            cl.contrats,
+            toutesPiecesFormatees
+        ]));
 
-            htmlActifs += `
-                <tr class="${classRow}">
-                    <td class="ps-4">${contratsHTML}</td>
-                    <td><span class="client-nom-highlight">${cl.nom}</span> <span class="text-light-custom">${cl.prenom}</span> ${btnCommentaire}</td>
-                    <td>${contactInfo || '<small class="text-light-custom">Aucun contact</small>'}</td>
-                    <td>${datesEffetHTML}</td>
-                    <td>${piecesManquantesHTML}</td>
-                    <td><small class="text-light-custom">${dateRelance}</small></td>
-                    <td><span class="badge ${badgeClass} badge-pill-custom">${cl.texte_statut}</span></td>
-                    <td class="text-center pe-4">
-                        <button data-relance="${donneesRelance}" onclick="envoyerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
-                        ${archiveBtnHTML}
-                        <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
-                        <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm my-1 ms-1">🗑️</button>
-                    </td>
-                </tr>
-            `;
-        }
+        htmlActifs += `
+            <tr class="${classRow}">
+                <td class="ps-4">${contratsHTML}</td>
+                <td><span class="client-nom-highlight">${cl.nom}</span> <span class="text-light-custom">${cl.prenom}</span> ${btnCommentaire}</td>
+                <td>${contactInfo || '<small class="text-light-custom">Aucun contact</small>'}</td>
+                <td>${datesEffetHTML}</td>
+                <td>${piecesManquantesHTML}</td>
+                <td><small class="text-light-custom">${dateRelance}</small></td>
+                <td><span class="badge ${badgeClass} badge-pill-custom">${cl.texte_statut}</span></td>
+                <td class="text-center pe-4">
+                    <button data-relance="${donneesRelance}" onclick="envoyerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-action-mail btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''}>📧 Mail</button>
+                    <button data-relance="${donneesRelance}" onclick="confirmerRelance(...JSON.parse(decodeURIComponent(this.dataset.relance)))" class="btn btn-outline-success btn-sm my-1" ${!cl.email || dossierEstComplet ? 'disabled' : ''} title="À cliquer après l’envoi effectif dans Gmail">✅ Mail envoyé</button>
+                    <button onclick="voirHistorique(${cl.id})" class="btn btn-action-proof btn-sm my-1 ms-1">📜 Preuve</button>
+                    <button onclick="supprimerClient(${cl.id})" class="btn btn-outline-danger btn-sm my-1 ms-1" title="Supprimer ce dossier">🗑️</button>
+                </td>
+            </tr>
+        `;
     });
 
     document.getElementById('tableBody').innerHTML = htmlActifs || '<tr><td colspan="8" class="text-center p-4 text-light-custom">Aucun dossier actif pour le moment.</td></tr>';
-    document.getElementById('tableArchiveBody').innerHTML = htmlArchives || '<tr><td colspan="6" class="text-center p-4 text-light-custom">Aucun dossier archivé.</td></tr>';
 }
 
 function trierParDateEffet() {
@@ -909,24 +833,6 @@ async function sauvegarderContratDetail() {
     chargerDossiers();
 }
 
-function ouvrirPiecesArchives(contrats) {
-    let html = '';
-    contrats.forEach(c => {
-        let detailsAuto = (c.marque || c.immat) ? ` (${c.marque} ${c.immat})` : '';
-        html += `<h6 class="fw-bold text-white">Contrat N°${c.num_contrat}${detailsAuto}</h6><ul class="mb-3 ps-3">`;
-        if(c.pieces_initiales && c.pieces_initiales.length > 0) {
-            c.pieces_initiales.forEach(p => {
-                html += `<li class="text-success fw-bold">✅ ${p} (Reçue & Validée)</li>`;
-            });
-        } else {
-            html += `<li class="text-muted">Aucune pièce particulière renseignée.</li>`;
-        }
-        html += `</ul>`;
-    });
-    document.getElementById('archiveContent').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('modalArchivePieces')).show();
-}
-
 function ouvrirCommentaire(id, commActuel) {
     document.getElementById('commentClientId').value = id;
     document.getElementById('editCommentaireTexte').value = commActuel || '';
@@ -947,15 +853,6 @@ async function sauvegarderCommentaire() {
     chargerDossiers();
 }
 
-async function changerStatut(id, statut) {
-    await fetch('/api/statut', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({client_id: id, statut: statut})
-    });
-    chargerDossiers();
-}
-
 async function supprimerClient(id) {
     if(confirm("Confirmer la suppression de ce client et de tous ses contrats ?")) {
         await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
@@ -963,7 +860,7 @@ async function supprimerClient(id) {
     }
 }
 
-async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
+function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
     let labelContrat = contrats.length > 1 ? "vos contrats" : "votre contrat";
     let explicationContrats = contrats.map(c => {
         let auto = [c.marque, c.immat].filter(Boolean).join(' ');
@@ -978,12 +875,21 @@ async function envoyerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
 
     // Ouvrir le brouillon avant tout await évite le blocage des fenêtres pop-up par le navigateur.
     window.open(gmailUrl, '_blank');
+}
 
-    fetch('/api/relancer', {
+async function confirmerRelance(id, email, nom, contrats, toutesPiecesFormatees) {
+    if (!confirm(`Confirmer que tu as bien envoyé le mail de relance à ${nom} ?`)) return;
+
+    const response = await fetch('/api/relancer', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({client_id: id, email: email, pieces: toutesPiecesFormatees})
-    }).catch(error => console.error('Impossible d’enregistrer la relance :', error));
+    });
+
+    if (!response.ok) {
+        alert("La relance n’a pas pu être enregistrée. Réessaie.");
+        return;
+    }
 
     chargerDossiers();
 }
