@@ -294,3 +294,24 @@ def delete_rendez_vous_commercial(rendez_vous_id):
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
     response = requests.delete(url, headers=get_headers())
     return _mutation_result(response, "Suppression du rendez-vous commercial")
+
+def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu):
+    if not SUPABASE_KEY:
+        return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}&select=comptes_rendus"
+    response = requests.get(url, headers=get_headers())
+    if not response.ok:
+        return _mutation_result(response, "Lecture des comptes rendus")
+    lignes = response.json()
+    if not lignes:
+        return False, "Ce rendez-vous est introuvable."
+    comptes_rendus = lignes[0].get("comptes_rendus") or []
+    if not isinstance(comptes_rendus, list):
+        comptes_rendus = []
+    comptes_rendus.append({"date": date_rdv, "compte_rendu": compte_rendu.strip()})
+    response = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}",
+        headers=get_headers(),
+        json={"comptes_rendus": comptes_rendus},
+    )
+    return _mutation_result(response, "Enregistrement du compte rendu")
