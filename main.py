@@ -122,14 +122,16 @@ def create_rendez_vous_commercial(data: RendezVousCommercialSchema):
 @app.put("/api/rendez-vous-commerciaux/{rendez_vous_id}")
 def modify_rendez_vous_commercial(rendez_vous_id: int, data: RendezVousCommercialSchema):
     valider_rendez_vous_commercial(data)
-    if not update_rendez_vous_commercial(rendez_vous_id, data.dict()):
-        raise HTTPException(status_code=502, detail="Impossible de modifier le rendez-vous commercial.")
+    ok, detail = update_rendez_vous_commercial(rendez_vous_id, data.dict())
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.delete("/api/rendez-vous-commerciaux/{rendez_vous_id}")
 def remove_rendez_vous_commercial(rendez_vous_id: int):
-    if not delete_rendez_vous_commercial(rendez_vous_id):
-        raise HTTPException(status_code=502, detail="Impossible de supprimer le rendez-vous commercial.")
+    ok, detail = delete_rendez_vous_commercial(rendez_vous_id)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 def normaliser_identite(value: str) -> str:
