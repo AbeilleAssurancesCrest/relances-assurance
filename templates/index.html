@@ -965,7 +965,6 @@ async function chargerDossiers() {
     filtrerTableaux();
     verifierClientExistant();
     remplirListeClientsCommerciale();
-    await chargerRendezVousCommerciaux();
 }
 
 const profilsCommerciaux = {
@@ -1743,7 +1742,7 @@ async function voirHistorique(id) {
 }
 
 reinitialiserFormulaire();
-chargerDossiers();
+Promise.all([chargerDossiers(), chargerRendezVousCommerciaux()]);
 </script>
 </body>
 </html>
