@@ -618,7 +618,7 @@
         <div class="row g-3 mb-4">
             <div class="col-6 col-xl-3"><button class="status-card status-card-orange" data-commercial-filter="avenir" onclick="filtrerRendezVousCommerciaux('avenir')"><span class="status-card-title">🗓️ À venir</span><span class="status-card-count" id="commercialCountAvenir">0</span><span class="status-card-hint">Rendez-vous planifiés</span></button></div>
             <div class="col-6 col-xl-3"><button class="status-card status-card-red" data-commercial-filter="suivi" onclick="filtrerRendezVousCommerciaux('suivi')"><span class="status-card-title">📌 À suivre</span><span class="status-card-count" id="commercialCountSuivi">0</span><span class="status-card-hint">Prochaine action à faire</span></button></div>
-            <div class="col-6 col-xl-3"><button class="status-card status-card-green" data-commercial-filter="gagnes" onclick="filtrerRendezVousCommerciaux('gagnes')"><span class="status-card-title">✅ Gagnés</span><span class="status-card-count" id="commercialCountGagnes">0</span><span class="status-card-hint">Dossiers conclus</span></button></div>
+            <div class="col-6 col-xl-3"><button class="status-card status-card-green" data-commercial-filter="gagnes" onclick="filtrerRendezVousCommerciaux('gagnes')"><span class="status-card-title">✅ Validés</span><span class="status-card-count" id="commercialCountGagnes">0</span><span class="status-card-hint">Dossiers conclus</span></button></div>
             <div class="col-6 col-xl-3"><button class="status-card status-card-neutral" data-commercial-filter="tous" onclick="filtrerRendezVousCommerciaux('tous')"><span class="status-card-title">📋 Tous</span><span class="status-card-count" id="commercialCountTous">0</span><span class="status-card-hint">Afficher tous les rendez-vous</span></button></div>
         </div>
 
@@ -675,7 +675,6 @@
             <div class="col-md-6"><label class="form-label">Prochaine action</label><input type="date" id="rdvCommercialProchaineAction" class="form-control"></div>
             <div class="col-12"><label class="form-label">Notes</label><textarea id="rdvCommercialCommentaire" class="form-control" rows="3" placeholder="Informations utiles pour le rendez-vous ou le suivi…"></textarea></div>
           </div>
-          <div class="form-text text-warning mt-3">Renseigne au moins un moyen de contact : e-mail ou téléphone.</div>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-abeille" id="btnSauverRdvCommercial">Enregistrer le rendez-vous</button></div>
       </form>
@@ -1134,7 +1133,6 @@ function ouvrirEditionRdvCommercial(id) {
 async function enregistrerRendezVousCommercial() {
     const email = document.getElementById('rdvCommercialEmail').value.trim();
     const telephone = document.getElementById('rdvCommercialTelephone').value.trim();
-    if (!email && !telephone) { alert('Ajoute au moins un e-mail ou un téléphone.'); return; }
     const dateLocale = document.getElementById('rdvCommercialDate').value;
     if (!dateLocale) { alert('Indique la date du rendez-vous.'); return; }
     const id = document.getElementById('rdvCommercialId').value;
@@ -1622,14 +1620,20 @@ async function sauvegarderCommentaire() {
     let id = document.getElementById('commentClientId').value;
     let comm = document.getElementById('editCommentaireTexte').value;
 
-    await fetch('/api/dossiers/update_commentaire', {
+    const response = await fetch('/api/dossiers/update_commentaire', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({client_id: parseInt(id), commentaire: comm})
     });
+    if (!response.ok) {
+        const erreur = await response.json().catch(() => ({}));
+        alert(erreur.detail || 'La modification du commentaire a échoué.');
+        return;
+    }
 
     bootstrap.Modal.getInstance(document.getElementById('modalCommentaire')).hide();
-    chargerDossiers();
+    await chargerDossiers();
+    afficherNotification('Modification enregistrée ✓');
 }
 
 function ouvrirCoordonnees(id) {
@@ -1668,8 +1672,14 @@ function supprimerDepuisBouton(bouton) {
 async function supprimerClient(id, nom, contrats) {
     const listeContrats = contrats.length ? contrats.map(numero => `• ${numero}`).join('\n') : 'Aucun contrat';
     if(confirm(`Supprimer définitivement le dossier de ${nom} et tous ses contrats ?\n\nContrats concernés :\n${listeContrats}`)) {
-        await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
-        chargerDossiers();
+        const response = await fetch(`/api/dossiers/${id}`, { method: 'DELETE' });
+        if (!response.ok) {
+            const erreur = await response.json().catch(() => ({}));
+            alert(erreur.detail || 'La suppression du dossier a échoué.');
+            return;
+        }
+        await chargerDossiers();
+        afficherNotification('Dossier supprimé ✓');
     }
 }
 
