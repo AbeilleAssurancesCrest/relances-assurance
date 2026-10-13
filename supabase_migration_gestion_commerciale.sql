@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.rendez_vous_commerciaux (
     date_rdv timestamptz NOT NULL,
     besoin text NOT NULL DEFAULT '',
     statut text NOT NULL DEFAULT 'RDV à venir' CHECK (
-        statut IN ('RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Gagné', 'Perdu')
+        statut IN ('RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé', 'Gagné', 'Perdu')
     ),
     prochaine_action date,
     commentaire text NOT NULL DEFAULT '',
