@@ -235,10 +235,19 @@ def _rendez_vous_payload(data):
     }
 
 def add_rendez_vous_commercial(data):
-    if not SUPABASE_KEY: return False
+    if not SUPABASE_KEY:
+        return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux"
     response = requests.post(url, headers=get_headers(), json=_rendez_vous_payload(data))
-    return response.status_code in (200, 201)
+    if response.status_code in (200, 201):
+        return True, ""
+    try:
+        contenu = response.json()
+        details = [contenu.get(cle) for cle in ("message", "details", "hint", "code") if contenu.get(cle)]
+        explication = " — ".join(str(detail) for detail in details)
+    except (ValueError, AttributeError):
+        explication = ""
+    return False, f"Supabase a refusé l’enregistrement (HTTP {response.status_code})" + (f" : {explication}" if explication else ".")
 
 def update_rendez_vous_commercial(rendez_vous_id, data):
     if not SUPABASE_KEY: return False
