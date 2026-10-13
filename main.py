@@ -98,7 +98,7 @@ def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
         raise HTTPException(status_code=400, detail="Le nom du contact est obligatoire.")
     if data.profil not in {"prospect_entrant", "prospect_demarche", "client_mono"}:
         raise HTTPException(status_code=400, detail="Choisis une catégorie valide.")
-    if data.statut not in {"RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Gagné", "Perdu"}:
+    if data.statut not in {"RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Devis validé", "Gagné", "Perdu"}:
         raise HTTPException(status_code=400, detail="Choisis un statut valide.")
     try:
         datetime.fromisoformat(data.date_rdv.replace("Z", "+00:00"))
