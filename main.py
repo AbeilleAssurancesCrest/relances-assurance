@@ -106,8 +106,12 @@ def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
         datetime.fromisoformat(data.date_rdv.replace("Z", "+00:00"))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Indique une date et une heure de rendez-vous valides.")
-    if data.client_id is not None and not any(client.get("id") == data.client_id for client in get_all_clients()):
-        raise HTTPException(status_code=404, detail="La fiche client sélectionnée est introuvable.")
+    if data.client_id is not None:
+        client = next((client for client in get_all_clients() if client.get("id") == data.client_id), None)
+        if client is None:
+            raise HTTPException(status_code=404, detail="La fiche client sélectionnée est introuvable.")
+        if data.profil != "client_mono" or len(client.get("contrats", [])) != 1:
+            raise HTTPException(status_code=400, detail="Le lien client est réservé aux fiches avec exactement un contrat.")
 
 @app.post("/api/rendez-vous-commerciaux")
 def create_rendez_vous_commercial(data: RendezVousCommercialSchema):
