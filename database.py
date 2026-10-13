@@ -214,10 +214,10 @@ def get_historique(client_id):
     return rows
 
 def get_rendez_vous_commerciaux():
-    if not SUPABASE_KEY: return []
+    if not SUPABASE_KEY: return None
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?select=*&order=date_rdv.asc"
     response = requests.get(url, headers=get_headers())
-    return response.json() if response.status_code == 200 else []
+    return response.json() if response.status_code == 200 else None
 
 def _rendez_vous_payload(data):
     return {
