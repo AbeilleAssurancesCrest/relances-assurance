@@ -21,3 +21,6 @@ ON public.rendez_vous_commerciaux (date_rdv);
 
 CREATE INDEX IF NOT EXISTS rendez_vous_commerciaux_client_id_idx
 ON public.rendez_vous_commerciaux (client_id);
+
+ALTER TABLE public.rendez_vous_commerciaux
+ADD COLUMN IF NOT EXISTS comptes_rendus jsonb NOT NULL DEFAULT '[]'::jsonb;
