@@ -11,12 +11,16 @@ if "[" in SUPABASE_URL:
     SUPABASE_URL = "https://pswcxcjvybvsvimfrrnq.supabase.co"
 
 def get_headers():
-    return {
+    headers = {
         "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
         "Prefer": "return=representation"
     }
+    # Les nouvelles clés Supabase sb_publishable_/sb_secret_ ne sont pas des JWT.
+    # Elles doivent être envoyées dans apikey, jamais comme jeton Bearer.
+    if not SUPABASE_KEY.startswith(("sb_publishable_", "sb_secret_")):
+        headers["Authorization"] = f"Bearer {SUPABASE_KEY}"
+    return headers
 
 def _parse_timestamp(value):
     if not value:
