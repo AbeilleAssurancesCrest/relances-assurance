@@ -416,11 +416,26 @@
         .modal-footer {
             border-top: 1px solid var(--chrome-border);
         }
+
+        #modalRendezVousCommercial .modal-dialog {
+            max-height: calc(100vh - 1rem);
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        #modalRendezVousCommercial .modal-content {
+            max-height: calc(100vh - 1rem);
+        }
+        #modalRendezVousCommercial .modal-body {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 
     <style>
         input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
+            filter: brightness(0) invert(1);
             cursor: pointer;
         }
     </style>
@@ -640,7 +655,7 @@
             <div class="col-md-6"><label class="form-label">Prénom</label><input type="text" id="rdvCommercialPrenom" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">E-mail</label><input type="email" id="rdvCommercialEmail" class="form-control" placeholder="nom@exemple.fr"></div>
             <div class="col-md-6"><label class="form-label">Téléphone</label><input type="text" id="rdvCommercialTelephone" class="form-control" placeholder="06…"></div>
-            <div class="col-md-6"><label class="form-label">Date et heure du rendez-vous *</label><input type="datetime-local" id="rdvCommercialDate" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">Date du rendez-vous *</label><input type="date" id="rdvCommercialDate" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">Besoin / assurance à étudier</label><input type="text" id="rdvCommercialBesoin" class="form-control" placeholder="Ex. auto, habitation, santé…"></div>
             <div class="col-md-6"><label class="form-label">Statut</label><select id="rdvCommercialStatut" class="form-select"><option>RDV à venir</option><option>RDV réalisé</option><option>Offre à préparer</option><option>Offre envoyée</option><option>À recontacter</option><option>Gagné</option><option>Perdu</option></select></div>
             <div class="col-md-6"><label class="form-label">Prochaine action</label><input type="date" id="rdvCommercialProchaineAction" class="form-control"></div>
@@ -980,8 +995,12 @@ async function chargerRendezVousCommerciaux() {
 
 function statutCommercialSuivi(rdv) {
     const actionDue = rdv.prochaine_action && new Date(`${rdv.prochaine_action}T00:00:00`) <= new Date();
+    const dateRdv = new Date(rdv.date_rdv);
+    const dateRdvLocale = new Date(dateRdv.getFullYear(), dateRdv.getMonth(), dateRdv.getDate());
+    const aujourdHui = new Date();
+    aujourdHui.setHours(0, 0, 0, 0);
     return ['Offre à préparer', 'Offre envoyée', 'À recontacter'].includes(rdv.statut) ||
-        (rdv.statut === 'RDV à venir' && new Date(rdv.date_rdv) < new Date()) ||
+        (rdv.statut === 'RDV à venir' && dateRdvLocale < aujourdHui) ||
         (actionDue && !['Gagné', 'Perdu'].includes(rdv.statut));
 }
 
@@ -991,8 +1010,13 @@ function filtrerRendezVousCommerciaux(filtre) {
 }
 
 function afficherRendezVousCommerciaux() {
-    const maintenant = new Date();
-    const aVenir = rendezVousCommerciaux.filter(rdv => rdv.statut === 'RDV à venir' && new Date(rdv.date_rdv) >= maintenant).length;
+    const aujourdHui = new Date();
+    aujourdHui.setHours(0, 0, 0, 0);
+    const dateDuJourOuApres = rdv => {
+        const date = new Date(rdv.date_rdv);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate()) >= aujourdHui;
+    };
+    const aVenir = rendezVousCommerciaux.filter(rdv => rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv)).length;
     const aSuivre = rendezVousCommerciaux.filter(statutCommercialSuivi).length;
     const gagnes = rendezVousCommerciaux.filter(rdv => rdv.statut === 'Gagné').length;
     document.getElementById('commercialCountAvenir').textContent = aVenir;
@@ -1006,7 +1030,7 @@ function afficherRendezVousCommerciaux() {
     const terme = normaliserIdentite(document.getElementById('rechercheCommerciale').value);
     const lignes = rendezVousCommerciaux
         .filter(rdv => {
-            if (filtreCommercialActif === 'avenir' && !(rdv.statut === 'RDV à venir' && new Date(rdv.date_rdv) >= maintenant)) return false;
+            if (filtreCommercialActif === 'avenir' && !(rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv))) return false;
             if (filtreCommercialActif === 'suivi' && !statutCommercialSuivi(rdv)) return false;
             if (filtreCommercialActif === 'gagnes' && rdv.statut !== 'Gagné') return false;
             const recherche = [rdv.nom, rdv.prenom, rdv.email, rdv.telephone, rdv.besoin, rdv.statut, profilsCommerciaux[rdv.profil]]
@@ -1023,7 +1047,7 @@ function afficherRendezVousCommerciaux() {
 
     tbody.innerHTML = lignes.map(rdv => {
         const date = new Date(rdv.date_rdv);
-        const dateTexte = Number.isNaN(date.getTime()) ? 'Date non renseignée' : date.toLocaleString('fr-FR', {dateStyle: 'short', timeStyle: 'short'});
+        const dateTexte = Number.isNaN(date.getTime()) ? 'Date non renseignée' : date.toLocaleDateString('fr-FR', {dateStyle: 'short'});
         const contact = [rdv.email, rdv.telephone].filter(Boolean).map(echapperHtml).join('<br>');
         const couleurStatut = rdv.statut === 'Gagné' ? 'badge-vert' : rdv.statut === 'Perdu' ? 'bg-secondary' : statutCommercialSuivi(rdv) ? 'badge-orange' : 'badge-vert';
         const prochaineAction = rdv.prochaine_action ? formatDateFR(rdv.prochaine_action) : '—';
@@ -1056,8 +1080,7 @@ function selectionnerClientCommercial() {
 }
 
 function datePourChampLocal(date) {
-    const locale = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return locale.toISOString().slice(0, 16);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function ouvrirRendezVousCommercial() {
@@ -1066,7 +1089,6 @@ function ouvrirRendezVousCommercial() {
     document.getElementById('rdvCommercialId').value = '';
     document.getElementById('titreModalRdvCommercial').textContent = '🤝 Nouveau rendez-vous commercial';
     document.getElementById('btnSauverRdvCommercial').textContent = 'Enregistrer le rendez-vous';
-    document.getElementById('rdvCommercialDate').value = datePourChampLocal(new Date(Date.now() + 60 * 60 * 1000));
     document.getElementById('rdvCommercialStatut').value = 'RDV à venir';
     remplirListeClientsCommerciale();
     afficherChoixClientCommercial();
@@ -1100,7 +1122,7 @@ async function enregistrerRendezVousCommercial() {
     const telephone = document.getElementById('rdvCommercialTelephone').value.trim();
     if (!email && !telephone) { alert('Ajoute au moins un e-mail ou un téléphone.'); return; }
     const dateLocale = document.getElementById('rdvCommercialDate').value;
-    if (!dateLocale) { alert('Indique la date et l’heure du rendez-vous.'); return; }
+    if (!dateLocale) { alert('Indique la date du rendez-vous.'); return; }
     const id = document.getElementById('rdvCommercialId').value;
     const clientSelectionne = document.getElementById('rdvCommercialClient').value;
     const donnees = {
@@ -1110,7 +1132,7 @@ async function enregistrerRendezVousCommercial() {
         email,
         telephone,
         profil: document.getElementById('rdvCommercialProfil').value,
-        date_rdv: new Date(dateLocale).toISOString(),
+        date_rdv: new Date(`${dateLocale}T12:00:00`).toISOString(),
         besoin: document.getElementById('rdvCommercialBesoin').value.trim(),
         statut: document.getElementById('rdvCommercialStatut').value,
         prochaine_action: document.getElementById('rdvCommercialProchaineAction').value,
