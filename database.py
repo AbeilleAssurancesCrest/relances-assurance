@@ -106,14 +106,17 @@ def get_all_clients():
     r = requests.get(url_clients, headers=get_headers())
     if r.status_code != 200:
         return []
-    
+
     clients = r.json()
-    
+    url_contrats = f"{SUPABASE_URL}/rest/v1/contrats?select=*&order=id.asc"
+    response_contrats = requests.get(url_contrats, headers=get_headers())
+    contrats_par_client = {}
+    if response_contrats.status_code == 200:
+        for contrat in response_contrats.json():
+            contrats_par_client.setdefault(contrat.get('client_id'), []).append(contrat)
+
     for cl in clients:
-        url_c = f"{SUPABASE_URL}/rest/v1/contrats?client_id=eq.{cl['id']}"
-        rc = requests.get(url_c, headers=get_headers())
-        contrats_db = rc.json() if rc.status_code == 200 else []
-        
+        contrats_db = contrats_par_client.get(cl['id'], [])
         contrats_list = []
         dossier_complet = True
         for c in contrats_db:
