@@ -12,7 +12,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import BaseModel
 from database import (init_db, add_client_avec_contrats, get_all_clients, 
                       log_relance, get_historique, delete_client, add_contrats_a_client,
-                      update_contrat_details, update_commentaire, update_coordonnees)
+                      update_contrat_details, update_commentaire, update_coordonnees,
+                      get_rendez_vous_commerciaux, add_rendez_vous_commercial,
+                      update_rendez_vous_commercial, delete_rendez_vous_commercial)
 
 app = FastAPI()
 init_db()
@@ -66,6 +68,19 @@ class CoordonneesUpdateSchema(BaseModel):
     email: str = ""
     telephone: str = ""
 
+class RendezVousCommercialSchema(BaseModel):
+    client_id: int | None = None
+    nom: str
+    prenom: str = ""
+    email: str = ""
+    telephone: str = ""
+    profil: str
+    date_rdv: str
+    besoin: str = ""
+    statut: str = "RDV à venir"
+    prochaine_action: str = ""
+    commentaire: str = ""
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
@@ -73,6 +88,46 @@ def index(request: Request):
 @app.get("/api/dossiers")
 def fetch_dossiers():
     return get_all_clients()
+
+@app.get("/api/rendez-vous-commerciaux")
+def fetch_rendez_vous_commerciaux():
+    return get_rendez_vous_commerciaux()
+
+def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
+    if not data.nom.strip():
+        raise HTTPException(status_code=400, detail="Le nom du contact est obligatoire.")
+    if not data.email.strip() and not data.telephone.strip():
+        raise HTTPException(status_code=400, detail="Ajoute au moins un e-mail ou un téléphone.")
+    if data.profil not in {"prospect_entrant", "prospect_demarche", "client_mono"}:
+        raise HTTPException(status_code=400, detail="Choisis une catégorie valide.")
+    if data.statut not in {"RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Gagné", "Perdu"}:
+        raise HTTPException(status_code=400, detail="Choisis un statut valide.")
+    try:
+        datetime.fromisoformat(data.date_rdv.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Indique une date et une heure de rendez-vous valides.")
+    if data.client_id is not None and not any(client.get("id") == data.client_id for client in get_all_clients()):
+        raise HTTPException(status_code=404, detail="La fiche client sélectionnée est introuvable.")
+
+@app.post("/api/rendez-vous-commerciaux")
+def create_rendez_vous_commercial(data: RendezVousCommercialSchema):
+    valider_rendez_vous_commercial(data)
+    if not add_rendez_vous_commercial(data.dict()):
+        raise HTTPException(status_code=502, detail="Impossible d'enregistrer le rendez-vous commercial.")
+    return {"status": "ok"}
+
+@app.put("/api/rendez-vous-commerciaux/{rendez_vous_id}")
+def modify_rendez_vous_commercial(rendez_vous_id: int, data: RendezVousCommercialSchema):
+    valider_rendez_vous_commercial(data)
+    if not update_rendez_vous_commercial(rendez_vous_id, data.dict()):
+        raise HTTPException(status_code=502, detail="Impossible de modifier le rendez-vous commercial.")
+    return {"status": "ok"}
+
+@app.delete("/api/rendez-vous-commerciaux/{rendez_vous_id}")
+def remove_rendez_vous_commercial(rendez_vous_id: int):
+    if not delete_rendez_vous_commercial(rendez_vous_id):
+        raise HTTPException(status_code=502, detail="Impossible de supprimer le rendez-vous commercial.")
+    return {"status": "ok"}
 
 def normaliser_identite(value: str) -> str:
     sans_accents = "".join(
