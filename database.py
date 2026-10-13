@@ -242,8 +242,12 @@ def add_rendez_vous_commercial(data):
     if not SUPABASE_KEY:
         return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux"
-    response = requests.post(url, headers=get_headers(), json=_rendez_vous_payload(data))
-    if response.status_code in (200, 201):
+    headers = get_headers()
+    # L'ajout n'a pas besoin de relire la ligne créée (ce qui exigerait une
+    # policy SELECT en plus de la policy INSERT).
+    headers["Prefer"] = "return=minimal"
+    response = requests.post(url, headers=headers, json=_rendez_vous_payload(data))
+    if response.status_code in (200, 201, 204):
         return True, ""
     try:
         contenu = response.json()
