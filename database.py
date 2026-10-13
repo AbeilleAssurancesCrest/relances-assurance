@@ -212,3 +212,42 @@ def get_historique(client_id):
         except:
             r_item['pieces'] = []
     return rows
+
+def get_rendez_vous_commerciaux():
+    if not SUPABASE_KEY: return []
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?select=*&order=date_rdv.asc"
+    response = requests.get(url, headers=get_headers())
+    return response.json() if response.status_code == 200 else []
+
+def _rendez_vous_payload(data):
+    return {
+        "client_id": data.get("client_id"),
+        "nom": data.get("nom", "").strip().upper(),
+        "prenom": data.get("prenom", "").strip(),
+        "email": data.get("email", "").strip(),
+        "telephone": data.get("telephone", "").strip(),
+        "profil": data.get("profil", ""),
+        "date_rdv": data.get("date_rdv"),
+        "besoin": data.get("besoin", "").strip(),
+        "statut": data.get("statut", "RDV à venir"),
+        "prochaine_action": data.get("prochaine_action") or None,
+        "commentaire": data.get("commentaire", "").strip(),
+    }
+
+def add_rendez_vous_commercial(data):
+    if not SUPABASE_KEY: return False
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux"
+    response = requests.post(url, headers=get_headers(), json=_rendez_vous_payload(data))
+    return response.status_code in (200, 201)
+
+def update_rendez_vous_commercial(rendez_vous_id, data):
+    if not SUPABASE_KEY: return False
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
+    response = requests.patch(url, headers=get_headers(), json=_rendez_vous_payload(data))
+    return response.ok
+
+def delete_rendez_vous_commercial(rendez_vous_id):
+    if not SUPABASE_KEY: return False
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
+    response = requests.delete(url, headers=get_headers())
+    return response.ok
