@@ -261,6 +261,7 @@ def _rendez_vous_payload(data):
         "besoin": data.get("besoin", "").strip(),
         "statut": data.get("statut", "RDV à venir"),
         "prochaine_action": data.get("prochaine_action") or None,
+        "type_prochaine_action": data.get("type_prochaine_action", ""),
         "commentaire": data.get("commentaire", "").strip(),
     }
 
