@@ -1168,7 +1168,11 @@ async function supprimerRdvCommercial(id) {
     const rdv = rendezVousCommerciaux.find(element => Number(element.id) === Number(id));
     if (!rdv || !confirm(`Supprimer le rendez-vous de ${rdv.prenom || ''} ${rdv.nom} ?`)) return;
     const response = await fetch(`/api/rendez-vous-commerciaux/${id}`, {method: 'DELETE'});
-    if (!response.ok) { alert('Le rendez-vous n’a pas pu être supprimé.'); return; }
+    if (!response.ok) {
+        const erreur = await response.json().catch(() => ({}));
+        alert(erreur.detail || 'Le rendez-vous n’a pas pu être supprimé.');
+        return;
+    }
     await chargerRendezVousCommerciaux();
     afficherNotification('Rendez-vous commercial supprimé ✓');
 }
