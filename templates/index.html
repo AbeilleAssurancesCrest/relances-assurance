@@ -677,6 +677,7 @@
             <div class="col-md-6"><label class="form-label">Besoin / assurance à étudier</label><input type="text" id="rdvCommercialBesoin" class="form-control" placeholder="Ex. auto, habitation, santé…"></div>
             <div class="col-md-6"><label class="form-label">Statut</label><select id="rdvCommercialStatut" class="form-select"><option>RDV à venir</option><option>RDV réalisé</option><option>Offre à préparer</option><option>Offre envoyée</option><option>À recontacter</option><option>Devis validé</option></select></div>
             <div class="col-md-6"><label class="form-label">Prochaine action</label><input type="date" id="rdvCommercialProchaineAction" class="form-control"></div>
+            <div class="col-md-6"><label class="form-label">Type de prochaine action</label><select id="rdvCommercialTypeProchaineAction" class="form-select"><option value="">— Choisir —</option><option>Appeler</option><option>Envoyer un devis</option><option>Relancer</option><option>Fixer un rendez-vous</option><option>Autre</option></select></div>
             <div class="col-12"><label class="form-label">Notes</label><textarea id="rdvCommercialCommentaire" class="form-control" rows="3" placeholder="Informations utiles pour le rendez-vous ou le suivi…"></textarea></div>
           </div>
         </div>
@@ -1090,7 +1091,7 @@ function afficherRendezVousCommerciaux() {
         const dateTexte = Number.isNaN(date.getTime()) ? 'Date non renseignée' : date.toLocaleDateString('fr-FR', {dateStyle: 'short'});
         const contact = [rdv.email, rdv.telephone].filter(Boolean).map(echapperHtml).join('<br>');
         const couleurStatut = ['Devis validé', 'Gagné'].includes(rdv.statut) ? 'badge-vert' : rdv.statut === 'Perdu' ? 'bg-secondary' : statutCommercialSuivi(rdv) ? 'badge-orange' : 'badge-vert';
-        const prochaineAction = `<input type="date" class="form-control form-control-sm commercial-next-action" aria-label="Date de la prochaine action pour ${echapperHtml(rdv.nom)}" value="${echapperHtml((rdv.prochaine_action || '').slice(0, 10))}" onchange="enregistrerProchaineActionRapide(${Number(rdv.id)}, this)">`;
+        const prochaineAction = `<input type="date" class="form-control form-control-sm commercial-next-action mb-1" aria-label="Date de la prochaine action pour ${echapperHtml(rdv.nom)}" value="${echapperHtml((rdv.prochaine_action || '').slice(0, 10))}" onchange="enregistrerProchaineActionRapide(${Number(rdv.id)}, this)"><select class="form-select form-select-sm commercial-next-action" aria-label="Type de prochaine action pour ${echapperHtml(rdv.nom)}" onchange="enregistrerTypeProchaineActionRapide(${Number(rdv.id)}, this)"><option value="">— Action —</option>${['Appeler', 'Envoyer un devis', 'Relancer', 'Fixer un rendez-vous', 'Autre'].map(action => `<option value="${action}" ${rdv.type_prochaine_action === action ? 'selected' : ''}>${action}</option>`).join('')}</select><div class="small text-light-custom mt-1">Dernier contact : ${echapperHtml(dateDernierCompteRendu(rdv) ? formatDateFR(dateDernierCompteRendu(rdv)) : '—')}</div>`;
         const comptesRendus = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus.length : 0;
         const boutonDevisValide = ['Devis validé', 'Gagné'].includes(rdv.statut)
             ? '<span class="badge badge-vert badge-pill-custom">✅ Devis validé</span>'
@@ -1123,6 +1124,7 @@ async function mettreAJourRdvCommercialRapidement(rdv, modifications, messageSuc
         besoin: rdv.besoin || '',
         statut: rdv.statut,
         prochaine_action: rdv.prochaine_action || '',
+        type_prochaine_action: rdv.type_prochaine_action || '',
         commentaire: rdv.commentaire || '',
         ...modifications
     };
@@ -1153,6 +1155,20 @@ async function enregistrerProchaineActionRapide(id, champDate) {
     const ancienneDate = (rdv.prochaine_action || '').slice(0, 10);
     const succes = await mettreAJourRdvCommercialRapidement(rdv, {prochaine_action: champDate.value}, 'Prochaine action mise à jour ✓');
     if (!succes) champDate.value = ancienneDate;
+}
+
+async function enregistrerTypeProchaineActionRapide(id, champAction) {
+    const rdv = rendezVousCommerciaux.find(element => Number(element.id) === Number(id));
+    if (!rdv) return;
+    const ancienneAction = rdv.type_prochaine_action || '';
+    const succes = await mettreAJourRdvCommercialRapidement(rdv, {type_prochaine_action: champAction.value}, 'Type de prochaine action mis à jour ✓');
+    if (!succes) champAction.value = ancienneAction;
+}
+
+function dateDernierCompteRendu(rdv) {
+    const comptes = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus : [];
+    const dates = comptes.map(compte => compte.date).filter(Boolean).sort();
+    return dates[dates.length - 1] || '';
 }
 
 function ouvrirComptesRendusRdv(id) {
@@ -1260,6 +1276,7 @@ function ouvrirEditionRdvCommercial(id) {
     }
     selectStatut.value = rdv.statut;
     document.getElementById('rdvCommercialProchaineAction').value = rdv.prochaine_action || '';
+    document.getElementById('rdvCommercialTypeProchaineAction').value = rdv.type_prochaine_action || '';
     document.getElementById('rdvCommercialCommentaire').value = rdv.commentaire || '';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRendezVousCommercial')).show();
 }
@@ -1282,6 +1299,7 @@ async function enregistrerRendezVousCommercial() {
         besoin: document.getElementById('rdvCommercialBesoin').value.trim(),
         statut: document.getElementById('rdvCommercialStatut').value,
         prochaine_action: document.getElementById('rdvCommercialProchaineAction').value,
+        type_prochaine_action: document.getElementById('rdvCommercialTypeProchaineAction').value,
         commentaire: document.getElementById('rdvCommercialCommentaire').value.trim()
     };
     const response = await fetch(id ? `/api/rendez-vous-commerciaux/${id}` : '/api/rendez-vous-commerciaux', {
