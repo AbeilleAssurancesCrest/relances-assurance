@@ -162,27 +162,50 @@ def get_all_clients():
 
     return clients
 
+def _mutation_result(response, action):
+    if response.ok:
+        try:
+            lignes = response.json()
+            if isinstance(lignes, list) and not lignes:
+                return False, f"{action} : aucune fiche modifiée. Vérifie les droits Supabase ou l’existence de la fiche."
+        except (ValueError, AttributeError):
+            pass
+        return True, ""
+    try:
+        contenu = response.json()
+        details = [contenu.get(cle) for cle in ("message", "details", "hint", "code") if contenu.get(cle)]
+        explication = " — ".join(str(detail) for detail in details)
+    except (ValueError, AttributeError):
+        explication = response.text.strip()
+    detail = f"{action} impossible (Supabase HTTP {response.status_code})"
+    if explication:
+        detail += f" : {explication}"
+    return False, detail
+
 def update_contrat_details(contrat_id, immat, pieces):
-    if not SUPABASE_KEY: return
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/contrats?id=eq.{contrat_id}"
     payload = {"immat": immat, "pieces_manquantes": json.dumps(pieces)}
-    requests.patch(url, headers=get_headers(), json=payload)
+    response = requests.patch(url, headers=get_headers(), json=payload)
+    return _mutation_result(response, "Modification du contrat")
 
 def update_commentaire(client_id, commentaire):
-    if not SUPABASE_KEY: return
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
-    requests.patch(url, headers=get_headers(), json={"commentaire": commentaire})
+    response = requests.patch(url, headers=get_headers(), json={"commentaire": commentaire})
+    return _mutation_result(response, "Modification du commentaire")
 
 def update_coordonnees(client_id, email, telephone):
-    if not SUPABASE_KEY: return False
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
     response = requests.patch(url, headers=get_headers(), json={"email": email, "telephone": telephone})
-    return response.ok
+    return _mutation_result(response, "Modification des coordonnées")
 
 def delete_client(client_id):
-    if not SUPABASE_KEY: return
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/clients?id=eq.{client_id}"
-    requests.delete(url, headers=get_headers())
+    response = requests.delete(url, headers=get_headers())
+    return _mutation_result(response, "Suppression du dossier")
 
 def log_relance(client_id, email, pieces):
     if not SUPABASE_KEY:
