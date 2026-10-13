@@ -284,13 +284,13 @@ def add_rendez_vous_commercial(data):
     return False, f"Supabase a refusé l’enregistrement (HTTP {response.status_code})" + (f" : {explication}" if explication else ".")
 
 def update_rendez_vous_commercial(rendez_vous_id, data):
-    if not SUPABASE_KEY: return False
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
     response = requests.patch(url, headers=get_headers(), json=_rendez_vous_payload(data))
-    return response.ok
+    return _mutation_result(response, "Modification du rendez-vous commercial")
 
 def delete_rendez_vous_commercial(rendez_vous_id):
-    if not SUPABASE_KEY: return False
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
     response = requests.delete(url, headers=get_headers())
-    return response.ok
+    return _mutation_result(response, "Suppression du rendez-vous commercial")
