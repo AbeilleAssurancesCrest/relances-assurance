@@ -80,6 +80,7 @@ class RendezVousCommercialSchema(BaseModel):
     besoin: str = ""
     statut: str = "RDV à venir"
     prochaine_action: str = ""
+    type_prochaine_action: str = ""
     commentaire: str = ""
 
 class CompteRenduRendezVousSchema(BaseModel):
