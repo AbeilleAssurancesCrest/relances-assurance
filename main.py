@@ -96,8 +96,6 @@ def fetch_rendez_vous_commerciaux():
 def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
     if not data.nom.strip():
         raise HTTPException(status_code=400, detail="Le nom du contact est obligatoire.")
-    if not data.email.strip() and not data.telephone.strip():
-        raise HTTPException(status_code=400, detail="Ajoute au moins un e-mail ou un téléphone.")
     if data.profil not in {"prospect_entrant", "prospect_demarche", "client_mono"}:
         raise HTTPException(status_code=400, detail="Choisis une catégorie valide.")
     if data.statut not in {"RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Gagné", "Perdu"}:
@@ -198,25 +196,32 @@ def add_contracts_to_existing_client(client_id: int, data: AjouterContratsSchema
 
 @app.post("/api/contrats/update")
 def modify_contrat(data: ContratUpdateSchema):
-    update_contrat_details(data.contrat_id, data.immat.strip().upper(), data.pieces)
+    ok, detail = update_contrat_details(data.contrat_id, data.immat.strip().upper(), data.pieces)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.post("/api/dossiers/update_commentaire")
 def modify_commentaire(data: CommentaireUpdateSchema):
-    update_commentaire(data.client_id, data.commentaire)
+    ok, detail = update_commentaire(data.client_id, data.commentaire)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.post("/api/dossiers/update_coordonnees")
 def modify_coordonnees(data: CoordonneesUpdateSchema):
     if not data.email.strip() and not data.telephone.strip():
         raise HTTPException(status_code=400, detail="Ajoute au moins un moyen de contact : e-mail ou téléphone.")
-    if not update_coordonnees(data.client_id, data.email.strip(), data.telephone.strip()):
-        raise HTTPException(status_code=502, detail="Impossible d'enregistrer les coordonnées.")
+    ok, detail = update_coordonnees(data.client_id, data.email.strip(), data.telephone.strip())
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.delete("/api/dossiers/{client_id}")
 def remove_dossier(client_id: int):
-    delete_client(client_id)
+    ok, detail = delete_client(client_id)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.post("/api/relancer")
