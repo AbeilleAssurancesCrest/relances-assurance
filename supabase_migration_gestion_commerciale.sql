@@ -24,3 +24,6 @@ ON public.rendez_vous_commerciaux (client_id);
 
 ALTER TABLE public.rendez_vous_commerciaux
 ADD COLUMN IF NOT EXISTS comptes_rendus jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.rendez_vous_commerciaux
+ADD COLUMN IF NOT EXISTS type_prochaine_action text NOT NULL DEFAULT '';
