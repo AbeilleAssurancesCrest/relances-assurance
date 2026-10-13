@@ -116,8 +116,9 @@ def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
 @app.post("/api/rendez-vous-commerciaux")
 def create_rendez_vous_commercial(data: RendezVousCommercialSchema):
     valider_rendez_vous_commercial(data)
-    if not add_rendez_vous_commercial(data.dict()):
-        raise HTTPException(status_code=502, detail="Impossible d'enregistrer le rendez-vous commercial.")
+    enregistre, detail = add_rendez_vous_commercial(data.dict())
+    if not enregistre:
+        raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
 
 @app.put("/api/rendez-vous-commerciaux/{rendez_vous_id}")
