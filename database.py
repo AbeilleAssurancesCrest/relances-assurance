@@ -336,3 +336,47 @@ def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu, type_ec
         json=mise_a_jour,
     )
     return _mutation_result(response, "Enregistrement du compte rendu")
+
+def update_compte_rendu_rendez_vous(rendez_vous_id, index, date_rdv, compte_rendu, type_echange):
+    if not SUPABASE_KEY:
+        return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}&select=comptes_rendus"
+    response = requests.get(url, headers=get_headers())
+    if not response.ok:
+        return _mutation_result(response, "Lecture de l’historique")
+    lignes = response.json()
+    if not lignes:
+        return False, "Ce suivi commercial est introuvable."
+    comptes_rendus = lignes[0].get("comptes_rendus") or []
+    if not isinstance(comptes_rendus, list) or index < 0 or index >= len(comptes_rendus):
+        return False, "Cet échange est introuvable dans l’historique. Actualise la page puis réessaie."
+    compte = dict(comptes_rendus[index])
+    compte.update({"date": date_rdv, "type": type_echange, "compte_rendu": compte_rendu.strip()})
+    comptes_rendus[index] = compte
+    response = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}",
+        headers=get_headers(),
+        json={"comptes_rendus": comptes_rendus},
+    )
+    return _mutation_result(response, "Modification de l’échange")
+
+def delete_compte_rendu_rendez_vous(rendez_vous_id, index):
+    if not SUPABASE_KEY:
+        return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}&select=comptes_rendus"
+    response = requests.get(url, headers=get_headers())
+    if not response.ok:
+        return _mutation_result(response, "Lecture de l’historique")
+    lignes = response.json()
+    if not lignes:
+        return False, "Ce suivi commercial est introuvable."
+    comptes_rendus = lignes[0].get("comptes_rendus") or []
+    if not isinstance(comptes_rendus, list) or index < 0 or index >= len(comptes_rendus):
+        return False, "Cet échange est introuvable dans l’historique. Actualise la page puis réessaie."
+    comptes_rendus.pop(index)
+    response = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}",
+        headers=get_headers(),
+        json={"comptes_rendus": comptes_rendus},
+    )
+    return _mutation_result(response, "Suppression de l’échange")
