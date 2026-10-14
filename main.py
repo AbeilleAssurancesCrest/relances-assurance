@@ -78,7 +78,7 @@ class RendezVousCommercialSchema(BaseModel):
     profil: str
     date_rdv: str
     besoin: str = ""
-    statut: str = "RDV à venir"
+    statut: str = "Demande reçue"
     prochaine_action: str = ""
     type_prochaine_action: str = ""
     commentaire: str = ""
@@ -86,6 +86,7 @@ class RendezVousCommercialSchema(BaseModel):
 class CompteRenduRendezVousSchema(BaseModel):
     date: str
     compte_rendu: str
+    type_echange: str = "Autre"
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
@@ -102,20 +103,24 @@ def fetch_rendez_vous_commerciaux():
 def valider_rendez_vous_commercial(data: RendezVousCommercialSchema):
     if not data.nom.strip():
         raise HTTPException(status_code=400, detail="Le nom du contact est obligatoire.")
-    if data.profil not in {"prospect_entrant", "prospect_demarche", "client_mono"}:
+    profils_valides = {"prospect_entrant", "prospect_demarche", "client_mono", "client_existant"}
+    if data.profil not in profils_valides:
         raise HTTPException(status_code=400, detail="Choisis une catégorie valide.")
-    if data.statut not in {"RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Devis validé", "Gagné", "Perdu"}:
+    statuts_valides = {"Demande reçue", "RDV proposé", "RDV à venir", "RDV réalisé", "Offre à préparer", "Offre envoyée", "À recontacter", "Devis validé", "Client conservé", "Contrats ajoutés", "À reconquérir", "Gagné", "Perdu"}
+    if data.statut not in statuts_valides:
         raise HTTPException(status_code=400, detail="Choisis un statut valide.")
     try:
         datetime.fromisoformat(data.date_rdv.replace("Z", "+00:00"))
     except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Indique une date et une heure de rendez-vous valides.")
+        raise HTTPException(status_code=400, detail="Indique une date valide pour le premier contact.")
     if data.client_id is not None:
         client = next((client for client in get_all_clients() if client.get("id") == data.client_id), None)
         if client is None:
             raise HTTPException(status_code=404, detail="La fiche client sélectionnée est introuvable.")
-        if data.profil != "client_mono" or len(client.get("contrats", [])) != 1:
-            raise HTTPException(status_code=400, detail="Le lien client est réservé aux fiches avec exactement un contrat.")
+        if data.profil == "client_mono" and len(client.get("contrats", [])) != 1:
+            raise HTTPException(status_code=400, detail="Le type Client mono-contrat nécessite une fiche avec exactement un contrat.")
+        if data.profil not in {"client_mono", "client_existant"}:
+            raise HTTPException(status_code=400, detail="La fiche client ne peut être liée qu’à un suivi de client existant.")
 
 @app.post("/api/rendez-vous-commerciaux")
 def create_rendez_vous_commercial(data: RendezVousCommercialSchema):
@@ -147,8 +152,11 @@ def create_compte_rendu_rendez_vous(rendez_vous_id: int, data: CompteRenduRendez
     try:
         datetime.strptime(data.date, "%Y-%m-%d")
     except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Choisis une date valide pour ce rendez-vous.")
-    ok, detail = add_compte_rendu_rendez_vous(rendez_vous_id, data.date, data.compte_rendu)
+        raise HTTPException(status_code=400, detail="Choisis une date valide pour cet échange.")
+    types_valides = {"Demande reçue", "Appel", "E-mail reçu", "E-mail envoyé", "Rendez-vous réalisé", "Devis envoyé", "Devis accepté", "Client conservé", "Contrats ajoutés", "Client parti", "Autre"}
+    if data.type_echange not in types_valides:
+        raise HTTPException(status_code=400, detail="Choisis un type d’échange valide.")
+    ok, detail = add_compte_rendu_rendez_vous(rendez_vous_id, data.date, data.compte_rendu, data.type_echange)
     if not ok:
         raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
