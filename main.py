@@ -15,7 +15,8 @@ from database import (init_db, add_client_avec_contrats, get_all_clients,
                       update_contrat_details, update_commentaire, update_coordonnees,
                       get_rendez_vous_commerciaux, add_rendez_vous_commercial,
                       update_rendez_vous_commercial, delete_rendez_vous_commercial,
-                      add_compte_rendu_rendez_vous)
+                      add_compte_rendu_rendez_vous, update_compte_rendu_rendez_vous,
+                      delete_compte_rendu_rendez_vous)
 
 app = FastAPI()
 init_db()
@@ -157,6 +158,33 @@ def create_compte_rendu_rendez_vous(rendez_vous_id: int, data: CompteRenduRendez
     if data.type_echange not in types_valides:
         raise HTTPException(status_code=400, detail="Choisis un type d’échange valide.")
     ok, detail = add_compte_rendu_rendez_vous(rendez_vous_id, data.date, data.compte_rendu, data.type_echange)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok"}
+
+@app.put("/api/rendez-vous-commerciaux/{rendez_vous_id}/comptes-rendus/{index}")
+def modify_compte_rendu_rendez_vous(rendez_vous_id: int, index: int, data: CompteRenduRendezVousSchema):
+    if index < 0:
+        raise HTTPException(status_code=400, detail="Cet échange est invalide.")
+    if not data.compte_rendu.strip():
+        raise HTTPException(status_code=400, detail="Écris un petit compte rendu avant de l’enregistrer.")
+    try:
+        datetime.strptime(data.date, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Choisis une date valide pour cet échange.")
+    types_valides = {"Demande reçue", "Appel", "E-mail reçu", "E-mail envoyé", "Rendez-vous réalisé", "Devis envoyé", "Devis accepté", "Client conservé", "Contrats ajoutés", "Client parti", "Autre"}
+    if data.type_echange not in types_valides:
+        raise HTTPException(status_code=400, detail="Choisis un type d’échange valide.")
+    ok, detail = update_compte_rendu_rendez_vous(rendez_vous_id, index, data.date, data.compte_rendu, data.type_echange)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok"}
+
+@app.delete("/api/rendez-vous-commerciaux/{rendez_vous_id}/comptes-rendus/{index}")
+def remove_compte_rendu_rendez_vous(rendez_vous_id: int, index: int):
+    if index < 0:
+        raise HTTPException(status_code=400, detail="Cet échange est invalide.")
+    ok, detail = delete_compte_rendu_rendez_vous(rendez_vous_id, index)
     if not ok:
         raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
