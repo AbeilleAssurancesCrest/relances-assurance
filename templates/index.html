@@ -615,14 +615,14 @@
 
     <section class="tab-pane fade" id="paneCommercial" role="tabpanel" aria-labelledby="tab-commercial">
         <div class="d-flex justify-content-end align-items-center gap-3 mb-4">
-            <button type="button" class="btn btn-abeille" onclick="ouvrirRendezVousCommercial()">＋ Nouveau rendez-vous</button>
+            <button type="button" class="btn btn-abeille" onclick="ouvrirRendezVousCommercial()">＋ Nouveau suivi commercial</button>
         </div>
         <div id="commercialDatabaseNotice" class="alert alert-warning d-none" role="status">Le suivi commercial n’est pas encore accessible. Vérifie la migration SQL dans Supabase et la connexion de l’application à la base.</div>
 
         <div class="row g-3 mb-4">
             <div class="col-6 col-xl-3"><button class="status-card status-card-orange" data-commercial-filter="avenir" onclick="filtrerRendezVousCommerciaux('avenir')"><span class="status-card-title">🗓️ À venir</span><span class="status-card-count" id="commercialCountAvenir">0</span><span class="status-card-hint">Rendez-vous planifiés</span></button></div>
             <div class="col-6 col-xl-3"><button class="status-card status-card-red" data-commercial-filter="suivi" onclick="filtrerRendezVousCommerciaux('suivi')"><span class="status-card-title">📌 À suivre</span><span class="status-card-count" id="commercialCountSuivi">0</span><span class="status-card-hint">Prochaine action à faire</span></button></div>
-            <div class="col-6 col-xl-3"><button class="status-card status-card-green" data-commercial-filter="valides" onclick="filtrerRendezVousCommerciaux('valides')"><span class="status-card-title">✅ Devis validés</span><span class="status-card-count" id="commercialCountValides">0</span><span class="status-card-hint">Dossiers conclus</span></button></div>
+            <div class="col-6 col-xl-3"><button class="status-card status-card-green" data-commercial-filter="valides" onclick="filtrerRendezVousCommerciaux('valides')"><span class="status-card-title">✅ Concrétisés</span><span class="status-card-count" id="commercialCountValides">0</span><span class="status-card-hint">Devis validés ou clients conservés</span></button></div>
             <div class="col-6 col-xl-3"><button class="status-card status-card-neutral" data-commercial-filter="tous" onclick="filtrerRendezVousCommerciaux('tous')"><span class="status-card-title">📋 Tous</span><span class="status-card-count" id="commercialCountTous">0</span><span class="status-card-hint">Afficher tous les rendez-vous</span></button></div>
         </div>
 
@@ -634,7 +634,7 @@
             <div class="card-body card-body-chrome p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead><tr class="small text-uppercase table-head-chrome"><th class="ps-4">Rendez-vous</th><th>Contact</th><th>Profil</th><th>Besoin</th><th>Statut</th><th>Prochaine action</th><th class="text-center pe-4">Actions</th></tr></thead>
+                        <thead><tr class="small text-uppercase table-head-chrome"><th class="ps-4">Premier contact</th><th>Contact</th><th>Profil</th><th>Besoin</th><th>Statut</th><th>Prochaine action</th><th class="text-center pe-4">Actions</th></tr></thead>
                         <tbody id="tableRendezVousCommerciaux"></tbody>
                     </table>
                 </div>
@@ -650,7 +650,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold text-warning app-title" id="titreModalRdvCommercial">🤝 Nouveau rendez-vous commercial</h5>
+        <h5 class="modal-title fw-bold text-warning app-title" id="titreModalRdvCommercial">🤝 Nouveau suivi commercial</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
       <form id="formRendezVousCommercial" onsubmit="event.preventDefault(); enregistrerRendezVousCommercial();">
@@ -663,6 +663,7 @@
                 <option value="prospect_entrant">Prospect entrant</option>
                 <option value="prospect_demarche">Prospect démarché</option>
                 <option value="client_mono">Client mono-contrat</option>
+                <option value="client_existant">Client existant — fidélisation</option>
               </select>
             </div>
             <div class="col-md-6 d-none" id="rdvCommercialClientGroup">
@@ -673,15 +674,15 @@
             <div class="col-md-6"><label class="form-label">Prénom</label><input type="text" id="rdvCommercialPrenom" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">E-mail</label><input type="email" id="rdvCommercialEmail" class="form-control" placeholder="nom@exemple.fr"></div>
             <div class="col-md-6"><label class="form-label">Téléphone</label><input type="text" id="rdvCommercialTelephone" class="form-control" placeholder="06…"></div>
-            <div class="col-md-6"><label class="form-label">Date du rendez-vous *</label><input type="date" id="rdvCommercialDate" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">Date du premier contact *</label><input type="date" id="rdvCommercialDate" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">Besoin / assurance à étudier</label><input type="text" id="rdvCommercialBesoin" class="form-control" placeholder="Ex. auto, habitation, santé…"></div>
-            <div class="col-md-6"><label class="form-label">Statut</label><select id="rdvCommercialStatut" class="form-select"><option>RDV à venir</option><option>RDV réalisé</option><option>Offre à préparer</option><option>Offre envoyée</option><option>À recontacter</option><option>Devis validé</option></select></div>
+            <div class="col-md-6"><label class="form-label">Étape actuelle</label><select id="rdvCommercialStatut" class="form-select"><option>Demande reçue</option><option>RDV proposé</option><option>RDV à venir</option><option>RDV réalisé</option><option>Offre à préparer</option><option>Offre envoyée</option><option>À recontacter</option><option>Devis validé</option><option>Client conservé</option><option>Contrats ajoutés</option><option>À reconquérir</option></select></div>
             <div class="col-md-6"><label class="form-label">Prochaine action</label><input type="date" id="rdvCommercialProchaineAction" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Type de prochaine action</label><select id="rdvCommercialTypeProchaineAction" class="form-select"><option value="">— Choisir —</option><option>Appeler</option><option>Envoyer un devis</option><option>Relancer</option><option>Fixer un rendez-vous</option><option>Autre</option></select></div>
-            <div class="col-12"><label class="form-label">Notes</label><textarea id="rdvCommercialCommentaire" class="form-control" rows="3" placeholder="Informations utiles pour le rendez-vous ou le suivi…"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Type de prochaine action</label><select id="rdvCommercialTypeProchaineAction" class="form-select"><option value="">— Choisir —</option><option>Appeler</option><option>Envoyer un devis</option><option>Relancer</option><option>Recontacter</option><option>Fixer un rendez-vous</option><option>Autre</option></select></div>
+            <div class="col-12"><label class="form-label">Contexte de départ (facultatif)</label><textarea id="rdvCommercialCommentaire" class="form-control" rows="3" placeholder="Ex. demande de relevé d’information, comparaison de tarifs, étude des autres contrats…"></textarea></div>
           </div>
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-abeille" id="btnSauverRdvCommercial">Enregistrer le rendez-vous</button></div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-abeille" id="btnSauverRdvCommercial">Enregistrer le suivi</button></div>
       </form>
     </div>
   </div>
@@ -691,21 +692,23 @@
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content card-custom">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold text-warning" id="titreCompteRenduRdv">📝 Comptes rendus</h5>
+        <h5 class="modal-title fw-bold text-warning" id="titreCompteRenduRdv">📝 Historique des échanges</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
       <div class="modal-body">
         <div id="listeComptesRendusRdv" class="mb-3"></div>
-        <button type="button" id="btnAfficherFormCompteRendu" class="btn btn-outline-warning btn-sm mb-3" onclick="basculerFormCompteRendu(true)">＋ Ajouter un compte rendu</button>
+        <button type="button" id="btnAfficherFormCompteRendu" class="btn btn-outline-warning btn-sm mb-3" onclick="basculerFormCompteRendu(true)">＋ Ajouter un échange</button>
         <form id="formCompteRenduRdv" class="d-none" onsubmit="event.preventDefault(); enregistrerCompteRenduRdv();">
           <input type="hidden" id="compteRenduRdvId">
-          <label for="compteRenduRdvDate" class="form-label">Date du rendez-vous</label>
+          <label for="compteRenduRdvType" class="form-label">Type d’échange</label>
+          <select id="compteRenduRdvType" class="form-select mb-3"><option>Demande reçue</option><option>Appel</option><option>E-mail reçu</option><option>E-mail envoyé</option><option>Rendez-vous réalisé</option><option>Devis envoyé</option><option>Devis accepté</option><option>Client conservé</option><option>Contrats ajoutés</option><option>Client parti</option><option>Autre</option></select>
+          <label for="compteRenduRdvDate" class="form-label">Date de l’échange</label>
           <input type="date" id="compteRenduRdvDate" class="form-control mb-3" required>
-          <label for="compteRenduRdvTexte" class="form-label">Petit compte rendu</label>
+          <label for="compteRenduRdvTexte" class="form-label">Compte rendu</label>
           <textarea id="compteRenduRdvTexte" class="form-control" rows="3" placeholder="Ce qui s’est dit, la décision prise, la suite prévue…" required></textarea>
           <div class="d-flex justify-content-end gap-2 mt-3">
             <button type="button" class="btn btn-outline-secondary" onclick="basculerFormCompteRendu(false)">Annuler</button>
-            <button type="submit" class="btn btn-abeille">Ajouter le compte rendu</button>
+            <button type="submit" class="btn btn-abeille">Enregistrer l’échange</button>
           </div>
         </form>
       </div>
@@ -1001,20 +1004,22 @@ async function chargerDossiers() {
 const profilsCommerciaux = {
     prospect_entrant: 'Prospect entrant',
     prospect_demarche: 'Prospect démarché',
-    client_mono: 'Client mono-contrat'
+    client_mono: 'Client mono-contrat',
+    client_existant: 'Client existant — fidélisation'
 };
-const statutsCommerciaux = ['RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé'];
+const statutsCommerciaux = ['Demande reçue', 'RDV proposé', 'RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé', 'Client conservé', 'Contrats ajoutés', 'À reconquérir'];
+const statutsCommerciauxConcluants = ['Devis validé', 'Client conservé', 'Contrats ajoutés'];
 
 function echapperHtml(valeur) {
     return String(valeur ?? '').replace(/[&<>"']/g, caractere => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[caractere]));
 }
 
-function remplirListeClientsCommerciale(clientIdAConserver = '') {
+function remplirListeClientsCommerciale(clientIdAConserver = '', inclureTous = false) {
     const select = document.getElementById('rdvCommercialClient');
     if (!select) return;
     const selectionActuelle = clientIdAConserver || select.value;
     select.replaceChildren(new Option('Saisir un nouveau contact', ''));
-    tousLesClients.filter(client => (client.contrats || []).length === 1 || String(client.id) === String(selectionActuelle)).forEach(client => {
+    tousLesClients.filter(client => inclureTous || (client.contrats || []).length === 1 || String(client.id) === String(selectionActuelle)).forEach(client => {
         const option = new Option(`${client.prenom || ''} ${client.nom || ''} — ${(client.contrats || []).length} contrat(s)`.trim(), client.id);
         select.add(option);
     });
@@ -1038,13 +1043,13 @@ async function chargerRendezVousCommerciaux() {
 
 function statutCommercialSuivi(rdv) {
     const actionDue = rdv.prochaine_action && new Date(`${rdv.prochaine_action}T00:00:00`) <= new Date();
+    const actionSansDate = !rdv.prochaine_action && ['Offre à préparer', 'Offre envoyée', 'À recontacter', 'À reconquérir'].includes(rdv.statut);
     const dateRdv = new Date(rdv.date_rdv);
     const dateRdvLocale = new Date(dateRdv.getFullYear(), dateRdv.getMonth(), dateRdv.getDate());
     const aujourdHui = new Date();
     aujourdHui.setHours(0, 0, 0, 0);
-    return ['Offre à préparer', 'Offre envoyée', 'À recontacter'].includes(rdv.statut) ||
-        (rdv.statut === 'RDV à venir' && dateRdvLocale < aujourdHui) ||
-        (actionDue && !['Devis validé', 'Gagné', 'Perdu'].includes(rdv.statut));
+    return actionSansDate || (rdv.statut === 'RDV à venir' && dateRdvLocale < aujourdHui) ||
+        (actionDue && !statutsCommerciauxConcluants.includes(rdv.statut));
 }
 
 function filtrerRendezVousCommerciaux(filtre) {
@@ -1061,7 +1066,7 @@ function afficherRendezVousCommerciaux() {
     };
     const aVenir = rendezVousCommerciaux.filter(rdv => rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv)).length;
     const aSuivre = rendezVousCommerciaux.filter(statutCommercialSuivi).length;
-    const devisValides = rendezVousCommerciaux.filter(rdv => ['Devis validé', 'Gagné'].includes(rdv.statut)).length;
+    const devisValides = rendezVousCommerciaux.filter(rdv => statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné').length;
     document.getElementById('commercialCountAvenir').textContent = aVenir;
     document.getElementById('commercialCountSuivi').textContent = aSuivre;
     document.getElementById('commercialCountValides').textContent = devisValides;
@@ -1075,7 +1080,7 @@ function afficherRendezVousCommerciaux() {
         .filter(rdv => {
             if (filtreCommercialActif === 'avenir' && !(rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv))) return false;
             if (filtreCommercialActif === 'suivi' && !statutCommercialSuivi(rdv)) return false;
-            if (filtreCommercialActif === 'valides' && !['Devis validé', 'Gagné'].includes(rdv.statut)) return false;
+            if (filtreCommercialActif === 'valides' && !(statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné')) return false;
             const recherche = [rdv.nom, rdv.prenom, rdv.email, rdv.telephone, rdv.besoin, rdv.statut, profilsCommerciaux[rdv.profil]]
                 .some(valeur => normaliserIdentite(valeur).includes(terme));
             return recherche;
@@ -1092,18 +1097,19 @@ function afficherRendezVousCommerciaux() {
         const date = new Date(rdv.date_rdv);
         const dateTexte = Number.isNaN(date.getTime()) ? 'Date non renseignée' : date.toLocaleDateString('fr-FR', {dateStyle: 'short'});
         const contact = [rdv.email, rdv.telephone].filter(Boolean).map(echapperHtml).join('<br>');
-        const couleurStatut = ['Devis validé', 'Gagné'].includes(rdv.statut) ? 'badge-vert' : rdv.statut === 'Perdu' ? 'bg-secondary' : statutCommercialSuivi(rdv) ? 'badge-orange' : 'badge-vert';
-        const prochaineAction = `<input type="date" class="form-control form-control-sm commercial-next-action mb-1" aria-label="Date de la prochaine action pour ${echapperHtml(rdv.nom)}" value="${echapperHtml((rdv.prochaine_action || '').slice(0, 10))}" onchange="enregistrerProchaineActionRapide(${Number(rdv.id)}, this)"><select class="form-select form-select-sm commercial-next-action" aria-label="Type de prochaine action pour ${echapperHtml(rdv.nom)}" onchange="enregistrerTypeProchaineActionRapide(${Number(rdv.id)}, this)"><option value="">— Action —</option>${['Appeler', 'Envoyer un devis', 'Relancer', 'Fixer un rendez-vous', 'Autre'].map(action => `<option value="${action}" ${rdv.type_prochaine_action === action ? 'selected' : ''}>${action}</option>`).join('')}</select><div class="small text-light-custom mt-1">Dernier contact : ${echapperHtml(dateDernierCompteRendu(rdv) ? formatDateFR(dateDernierCompteRendu(rdv)) : '—')}</div>`;
+        const estConclu = statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné';
+        const couleurStatut = estConclu ? 'badge-vert' : rdv.statut === 'À reconquérir' || rdv.statut === 'Perdu' ? 'bg-secondary' : statutCommercialSuivi(rdv) ? 'badge-orange' : 'badge-vert';
+        const prochaineAction = `<input type="date" class="form-control form-control-sm commercial-next-action mb-1" aria-label="Date de la prochaine action pour ${echapperHtml(rdv.nom)}" value="${echapperHtml((rdv.prochaine_action || '').slice(0, 10))}" onchange="enregistrerProchaineActionRapide(${Number(rdv.id)}, this)"><select class="form-select form-select-sm commercial-next-action" aria-label="Type de prochaine action pour ${echapperHtml(rdv.nom)}" onchange="enregistrerTypeProchaineActionRapide(${Number(rdv.id)}, this)"><option value="">— Action —</option>${['Appeler', 'Envoyer un devis', 'Relancer', 'Recontacter', 'Fixer un rendez-vous', 'Autre'].map(action => `<option value="${action}" ${rdv.type_prochaine_action === action ? 'selected' : ''}>${action}</option>`).join('')}</select>${rdv.statut === 'Offre envoyée' && rdv.prochaine_action ? `<div class="small ${statutCommercialSuivi(rdv) ? 'text-warning' : 'text-light-custom'} mt-1">Relance du devis ${statutCommercialSuivi(rdv) ? 'en retard' : 'prévue'} : ${echapperHtml(formatDateFR(rdv.prochaine_action))}</div>` : rdv.statut === 'À reconquérir' && rdv.prochaine_action ? `<div class="small text-light-custom mt-1">Rappel prévu : ${echapperHtml(formatDateFR(rdv.prochaine_action))}</div>` : ''}<div class="small text-light-custom mt-1">Dernier échange : ${echapperHtml(dateDernierCompteRendu(rdv) ? formatDateFR(dateDernierCompteRendu(rdv)) : '—')}</div>`;
         const comptesRendus = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus.length : 0;
-        const boutonDevisValide = ['Devis validé', 'Gagné'].includes(rdv.statut)
-            ? '<span class="badge badge-vert badge-pill-custom">✅ Devis validé</span>'
+        const boutonDevisValide = estConclu
+            ? `<span class="badge badge-vert badge-pill-custom">✅ ${echapperHtml(rdv.statut)}</span>`
             : `<button class="btn btn-outline-success btn-sm" onclick="marquerDevisValide(${Number(rdv.id)})">✅ Devis validé</button>`;
         return `<tr>
             <td class="ps-4 text-nowrap">${echapperHtml(dateTexte)}</td>
             <td><strong class="client-nom-highlight">${echapperHtml(rdv.nom)}</strong> ${echapperHtml(rdv.prenom)}<div class="small text-light-custom">${contact || '—'}</div></td>
             <td>${echapperHtml(profilsCommerciaux[rdv.profil] || rdv.profil)}</td>
             <td>${echapperHtml(rdv.besoin || '—')}</td>
-            <td><span class="badge ${couleurStatut} badge-pill-custom">${echapperHtml(rdv.statut)}</span>${!['Devis validé', 'Gagné'].includes(rdv.statut) ? `<div class="mt-2">${boutonDevisValide}</div>` : ''}</td>
+            <td><span class="badge ${couleurStatut} badge-pill-custom">${echapperHtml(rdv.statut)}</span>${!estConclu ? `<div class="mt-2">${boutonDevisValide}</div>` : ''}</td>
             <td>${prochaineAction}</td>
             <td class="text-center pe-4"><div class="d-flex flex-wrap justify-content-center gap-1">
                 <button class="btn btn-outline-info btn-sm" title="Consulter les notes" onclick="ouvrirComptesRendusRdv(${Number(rdv.id)})">📝 Notes <span class="badge text-bg-secondary">${comptesRendus}</span></button>
@@ -1170,7 +1176,7 @@ async function enregistrerTypeProchaineActionRapide(id, champAction) {
 function dateDernierCompteRendu(rdv) {
     const comptes = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus : [];
     const dates = comptes.map(compte => compte.date).filter(Boolean).sort();
-    return dates[dates.length - 1] || '';
+    return dates[dates.length - 1] || (rdv.date_rdv || '').slice(0, 10);
 }
 
 function ouvrirComptesRendusRdv(id) {
@@ -1178,9 +1184,10 @@ function ouvrirComptesRendusRdv(id) {
     if (!rdv) return;
     document.getElementById('compteRenduRdvId').value = rdv.id;
     document.getElementById('compteRenduRdvDate').value = datePourChampLocal(new Date());
+    document.getElementById('compteRenduRdvType').value = 'Autre';
     document.getElementById('compteRenduRdvTexte').value = '';
     basculerFormCompteRendu(false);
-    document.getElementById('titreCompteRenduRdv').textContent = `📝 Comptes rendus — ${rdv.prenom || ''} ${rdv.nom}`.trim();
+    document.getElementById('titreCompteRenduRdv').textContent = `📝 Historique des échanges — ${rdv.prenom || ''} ${rdv.nom}`.trim();
     afficherComptesRendusRdv(rdv);
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompteRenduRdv')).show();
 }
@@ -1194,15 +1201,13 @@ function basculerFormCompteRendu(afficher) {
 function afficherComptesRendusRdv(rdv) {
     const liste = document.getElementById('listeComptesRendusRdv');
     const comptes = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus : [];
-    if (!comptes.length) {
-        liste.innerHTML = '<p class="text-light-custom small mb-0">Aucun compte rendu pour le moment.</p>';
-        return;
-    }
-    liste.innerHTML = [...comptes].reverse().map((compte, index) => `
+    const contexte = rdv.commentaire ? `<article class="p-3 mb-3 rounded-3" style="background:#202124;border:1px solid var(--chrome-border)"><div class="small text-warning fw-semibold mb-1">Contexte de départ</div><div class="text-light-custom" style="white-space:pre-wrap">${echapperHtml(rdv.commentaire)}</div></article>` : '';
+    const historique = [...comptes].reverse().map((compte, index) => `
         <article class="p-3 mb-2 rounded-3" style="background:#202124;border:1px solid var(--chrome-border)">
-          <div class="small text-warning fw-semibold mb-1">Rendez-vous ${comptes.length - index} · ${echapperHtml(formatDateFR(compte.date))}</div>
+          <div class="small text-warning fw-semibold mb-1">${echapperHtml(compte.type || `Échange ${comptes.length - index}`)} · ${echapperHtml(formatDateFR(compte.date))}</div>
           <div class="text-light-custom" style="white-space:pre-wrap">${echapperHtml(compte.compte_rendu)}</div>
         </article>`).join('');
+    liste.innerHTML = contexte + (historique || '<p class="text-light-custom small mb-0">Aucun échange enregistré pour le moment.</p>');
 }
 
 async function enregistrerCompteRenduRdv() {
@@ -1212,6 +1217,7 @@ async function enregistrerCompteRenduRdv() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             date: document.getElementById('compteRenduRdvDate').value,
+            type_echange: document.getElementById('compteRenduRdvType').value,
             compte_rendu: document.getElementById('compteRenduRdvTexte').value.trim()
         })
     });
@@ -1225,13 +1231,15 @@ async function enregistrerCompteRenduRdv() {
     if (rdv) afficherComptesRendusRdv(rdv);
     document.getElementById('compteRenduRdvTexte').value = '';
     basculerFormCompteRendu(false);
-    afficherNotification('Compte rendu ajouté ✓');
+    afficherNotification('Échange ajouté ✓');
 }
 
 function afficherChoixClientCommercial() {
-    const profilClient = document.getElementById('rdvCommercialProfil').value === 'client_mono';
+    const profil = document.getElementById('rdvCommercialProfil').value;
+    const profilClient = ['client_mono', 'client_existant'].includes(profil);
     const groupe = document.getElementById('rdvCommercialClientGroup');
     groupe.classList.toggle('d-none', !profilClient);
+    remplirListeClientsCommerciale(document.getElementById('rdvCommercialClient').value, profil === 'client_existant');
     if (!profilClient) document.getElementById('rdvCommercialClient').value = '';
 }
 
@@ -1253,9 +1261,10 @@ function ouvrirRendezVousCommercial() {
     document.querySelectorAll('#rdvCommercialStatut option[data-statut-ancien]').forEach(option => option.remove());
     formulaire.reset();
     document.getElementById('rdvCommercialId').value = '';
-    document.getElementById('titreModalRdvCommercial').textContent = '🤝 Nouveau rendez-vous commercial';
-    document.getElementById('btnSauverRdvCommercial').textContent = 'Enregistrer le rendez-vous';
-    document.getElementById('rdvCommercialStatut').value = 'RDV à venir';
+    document.getElementById('titreModalRdvCommercial').textContent = '🤝 Nouveau suivi commercial';
+    document.getElementById('btnSauverRdvCommercial').textContent = 'Enregistrer le suivi';
+    document.getElementById('rdvCommercialDate').value = datePourChampLocal(new Date());
+    document.getElementById('rdvCommercialStatut').value = 'Demande reçue';
     remplirListeClientsCommerciale();
     afficherChoixClientCommercial();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRendezVousCommercial')).show();
@@ -1266,7 +1275,7 @@ function ouvrirEditionRdvCommercial(id) {
     if (!rdv) return;
     remplirListeClientsCommerciale(rdv.client_id || '');
     document.getElementById('rdvCommercialId').value = rdv.id;
-    document.getElementById('titreModalRdvCommercial').textContent = '✏️ Modifier le rendez-vous commercial';
+    document.getElementById('titreModalRdvCommercial').textContent = '✏️ Modifier le suivi commercial';
     document.getElementById('btnSauverRdvCommercial').textContent = 'Enregistrer les modifications';
     document.getElementById('rdvCommercialProfil').value = rdv.profil;
     afficherChoixClientCommercial();
@@ -1295,7 +1304,7 @@ async function enregistrerRendezVousCommercial() {
     const email = document.getElementById('rdvCommercialEmail').value.trim();
     const telephone = document.getElementById('rdvCommercialTelephone').value.trim();
     const dateLocale = document.getElementById('rdvCommercialDate').value;
-    if (!dateLocale) { alert('Indique la date du rendez-vous.'); return; }
+    if (!dateLocale) { alert('Indique la date du premier contact.'); return; }
     const id = document.getElementById('rdvCommercialId').value;
     const clientSelectionne = document.getElementById('rdvCommercialClient').value;
     const donnees = {
@@ -1324,7 +1333,7 @@ async function enregistrerRendezVousCommercial() {
     }
     bootstrap.Modal.getInstance(document.getElementById('modalRendezVousCommercial')).hide();
     await chargerRendezVousCommerciaux();
-    afficherNotification(id ? 'Rendez-vous commercial mis à jour ✓' : 'Rendez-vous commercial enregistré ✓');
+    afficherNotification(id ? 'Suivi commercial mis à jour ✓' : 'Suivi commercial enregistré ✓');
 }
 
 async function supprimerRdvCommercial(id) {
