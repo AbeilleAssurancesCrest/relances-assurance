@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://pswcxcjvybvsvimfrrnq.supabase.co").strip()
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
@@ -259,7 +259,7 @@ def _rendez_vous_payload(data):
         "profil": data.get("profil", ""),
         "date_rdv": data.get("date_rdv"),
         "besoin": data.get("besoin", "").strip(),
-        "statut": data.get("statut", "RDV à venir"),
+        "statut": data.get("statut", "Demande reçue"),
         "prochaine_action": data.get("prochaine_action") or None,
         "type_prochaine_action": data.get("type_prochaine_action", ""),
         "commentaire": data.get("commentaire", "").strip(),
@@ -296,7 +296,7 @@ def delete_rendez_vous_commercial(rendez_vous_id):
     response = requests.delete(url, headers=get_headers())
     return _mutation_result(response, "Suppression du rendez-vous commercial")
 
-def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu):
+def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu, type_echange="Autre"):
     if not SUPABASE_KEY:
         return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}&select=comptes_rendus"
@@ -309,10 +309,30 @@ def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu):
     comptes_rendus = lignes[0].get("comptes_rendus") or []
     if not isinstance(comptes_rendus, list):
         comptes_rendus = []
-    comptes_rendus.append({"date": date_rdv, "compte_rendu": compte_rendu.strip()})
+    comptes_rendus.append({"date": date_rdv, "type": type_echange, "compte_rendu": compte_rendu.strip()})
+    mise_a_jour = {"comptes_rendus": comptes_rendus}
+    date_echange = datetime.strptime(date_rdv, "%Y-%m-%d").date()
+    if type_echange == "Devis envoyé":
+        mise_a_jour.update({
+            "statut": "Offre envoyée",
+            "prochaine_action": (date_echange + timedelta(days=7)).isoformat(),
+            "type_prochaine_action": "Relancer",
+        })
+    elif type_echange == "Devis accepté":
+        mise_a_jour.update({"statut": "Devis validé", "prochaine_action": None, "type_prochaine_action": ""})
+    elif type_echange == "Client conservé":
+        mise_a_jour.update({"statut": "Client conservé", "prochaine_action": None, "type_prochaine_action": ""})
+    elif type_echange == "Contrats ajoutés":
+        mise_a_jour.update({"statut": "Contrats ajoutés", "prochaine_action": None, "type_prochaine_action": ""})
+    elif type_echange == "Client parti":
+        mise_a_jour.update({
+            "statut": "À reconquérir",
+            "prochaine_action": (date_echange + timedelta(days=365)).isoformat(),
+            "type_prochaine_action": "Recontacter",
+        })
     response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}",
         headers=get_headers(),
-        json={"comptes_rendus": comptes_rendus},
+        json=mise_a_jour,
     )
     return _mutation_result(response, "Enregistrement du compte rendu")
