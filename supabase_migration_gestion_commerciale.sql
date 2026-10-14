@@ -5,11 +5,11 @@ CREATE TABLE IF NOT EXISTS public.rendez_vous_commerciaux (
     prenom text NOT NULL DEFAULT '',
     email text NOT NULL DEFAULT '',
     telephone text NOT NULL DEFAULT '',
-    profil text NOT NULL CHECK (profil IN ('prospect_entrant', 'prospect_demarche', 'client_mono')),
+    profil text NOT NULL CHECK (profil IN ('prospect_entrant', 'prospect_demarche', 'client_mono', 'client_existant')),
     date_rdv timestamptz NOT NULL,
     besoin text NOT NULL DEFAULT '',
-    statut text NOT NULL DEFAULT 'RDV à venir' CHECK (
-        statut IN ('RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé', 'Gagné', 'Perdu')
+    statut text NOT NULL DEFAULT 'Demande reçue' CHECK (
+        statut IN ('Demande reçue', 'RDV proposé', 'RDV à venir', 'RDV réalisé', 'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé', 'Client conservé', 'Contrats ajoutés', 'À reconquérir')
     ),
     prochaine_action date,
     commentaire text NOT NULL DEFAULT '',
@@ -23,7 +23,44 @@ CREATE INDEX IF NOT EXISTS rendez_vous_commerciaux_client_id_idx
 ON public.rendez_vous_commerciaux (client_id);
 
 ALTER TABLE public.rendez_vous_commerciaux
+ALTER COLUMN statut SET DEFAULT 'Demande reçue';
+
+ALTER TABLE public.rendez_vous_commerciaux
 ADD COLUMN IF NOT EXISTS comptes_rendus jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.rendez_vous_commerciaux
 ADD COLUMN IF NOT EXISTS type_prochaine_action text NOT NULL DEFAULT '';
+
+ALTER TABLE public.rendez_vous_commerciaux
+DROP CONSTRAINT IF EXISTS rendez_vous_commerciaux_profil_check;
+
+ALTER TABLE public.rendez_vous_commerciaux
+ADD CONSTRAINT rendez_vous_commerciaux_profil_check
+CHECK (profil IN ('prospect_entrant', 'prospect_demarche', 'client_mono', 'client_existant'));
+
+ALTER TABLE public.rendez_vous_commerciaux
+DROP CONSTRAINT IF EXISTS rendez_vous_commerciaux_statut_check;
+
+UPDATE public.rendez_vous_commerciaux
+SET statut = CASE
+    WHEN statut = 'Gagné' THEN 'Devis validé'
+    WHEN statut = 'Perdu' THEN 'À reconquérir'
+    ELSE statut
+END,
+type_prochaine_action = CASE
+    WHEN statut = 'Perdu' AND type_prochaine_action = '' THEN 'Recontacter'
+    ELSE type_prochaine_action
+END,
+prochaine_action = CASE
+    WHEN statut = 'Perdu' AND prochaine_action IS NULL THEN (date_rdv::date + INTERVAL '1 year')::date
+    ELSE prochaine_action
+END
+WHERE statut IN ('Gagné', 'Perdu');
+
+ALTER TABLE public.rendez_vous_commerciaux
+ADD CONSTRAINT rendez_vous_commerciaux_statut_check
+CHECK (statut IN (
+    'Demande reçue', 'RDV proposé', 'RDV à venir', 'RDV réalisé',
+    'Offre à préparer', 'Offre envoyée', 'À recontacter', 'Devis validé',
+    'Client conservé', 'Contrats ajoutés', 'À reconquérir'
+));
