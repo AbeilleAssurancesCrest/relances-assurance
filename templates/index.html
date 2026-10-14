@@ -696,13 +696,15 @@
       </div>
       <div class="modal-body">
         <div id="listeComptesRendusRdv" class="mb-3"></div>
-        <form id="formCompteRenduRdv" onsubmit="event.preventDefault(); enregistrerCompteRenduRdv();">
+        <button type="button" id="btnAfficherFormCompteRendu" class="btn btn-outline-warning btn-sm mb-3" onclick="basculerFormCompteRendu(true)">＋ Ajouter un compte rendu</button>
+        <form id="formCompteRenduRdv" class="d-none" onsubmit="event.preventDefault(); enregistrerCompteRenduRdv();">
           <input type="hidden" id="compteRenduRdvId">
           <label for="compteRenduRdvDate" class="form-label">Date du rendez-vous</label>
           <input type="date" id="compteRenduRdvDate" class="form-control mb-3" required>
           <label for="compteRenduRdvTexte" class="form-label">Petit compte rendu</label>
           <textarea id="compteRenduRdvTexte" class="form-control" rows="3" placeholder="Ce qui s’est dit, la décision prise, la suite prévue…" required></textarea>
-          <div class="d-flex justify-content-end mt-3">
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" onclick="basculerFormCompteRendu(false)">Annuler</button>
             <button type="submit" class="btn btn-abeille">Ajouter le compte rendu</button>
           </div>
         </form>
@@ -1104,7 +1106,7 @@ function afficherRendezVousCommerciaux() {
             <td><span class="badge ${couleurStatut} badge-pill-custom">${echapperHtml(rdv.statut)}</span>${!['Devis validé', 'Gagné'].includes(rdv.statut) ? `<div class="mt-2">${boutonDevisValide}</div>` : ''}</td>
             <td>${prochaineAction}</td>
             <td class="text-center pe-4"><div class="d-flex flex-wrap justify-content-center gap-1">
-                <button class="btn btn-outline-info btn-sm" title="Voir ou ajouter un compte rendu" onclick="ouvrirComptesRendusRdv(${Number(rdv.id)})">📝 ${comptesRendus}</button>
+                <button class="btn btn-outline-info btn-sm" title="Consulter les notes" onclick="ouvrirComptesRendusRdv(${Number(rdv.id)})">📝 Notes <span class="badge text-bg-secondary">${comptesRendus}</span></button>
                 <button class="btn btn-outline-warning btn-sm" onclick="ouvrirEditionRdvCommercial(${Number(rdv.id)})">Modifier</button>
                 <button class="btn btn-outline-danger btn-sm" onclick="supprimerRdvCommercial(${Number(rdv.id)})" aria-label="Supprimer le rendez-vous">🗑️</button>
             </div></td>
@@ -1177,9 +1179,16 @@ function ouvrirComptesRendusRdv(id) {
     document.getElementById('compteRenduRdvId').value = rdv.id;
     document.getElementById('compteRenduRdvDate').value = datePourChampLocal(new Date());
     document.getElementById('compteRenduRdvTexte').value = '';
+    basculerFormCompteRendu(false);
     document.getElementById('titreCompteRenduRdv').textContent = `📝 Comptes rendus — ${rdv.prenom || ''} ${rdv.nom}`.trim();
     afficherComptesRendusRdv(rdv);
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompteRenduRdv')).show();
+}
+
+function basculerFormCompteRendu(afficher) {
+    document.getElementById('formCompteRenduRdv').classList.toggle('d-none', !afficher);
+    document.getElementById('btnAfficherFormCompteRendu').classList.toggle('d-none', afficher);
+    if (afficher) document.getElementById('compteRenduRdvTexte').focus();
 }
 
 function afficherComptesRendusRdv(rdv) {
@@ -1215,6 +1224,7 @@ async function enregistrerCompteRenduRdv() {
     const rdv = rendezVousCommerciaux.find(element => Number(element.id) === Number(id));
     if (rdv) afficherComptesRendusRdv(rdv);
     document.getElementById('compteRenduRdvTexte').value = '';
+    basculerFormCompteRendu(false);
     afficherNotification('Compte rendu ajouté ✓');
 }
 
