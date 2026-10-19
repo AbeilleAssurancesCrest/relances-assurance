@@ -58,6 +58,7 @@ class RelanceSchema(BaseModel):
 
 class ContratUpdateSchema(BaseModel):
     contrat_id: int
+    num_contrat: str = ""
     immat: str = ""
     pieces: list[str] = []
 
@@ -253,7 +254,20 @@ def add_contracts_to_existing_client(client_id: int, data: AjouterContratsSchema
 
 @app.post("/api/contrats/update")
 def modify_contrat(data: ContratUpdateSchema):
-    ok, detail = update_contrat_details(data.contrat_id, data.immat.strip().upper(), data.pieces)
+    num_contrat = data.num_contrat.strip()
+    if num_contrat:
+        if len(num_contrat) != 8 or not num_contrat.isdigit():
+            raise HTTPException(status_code=400, detail="Le numéro de contrat doit comporter exactement 8 chiffres.")
+        doublon = next((
+            contrat
+            for client in get_all_clients()
+            for contrat in client.get("contrats", [])
+            if str(contrat.get("num_contrat", "")).strip() == num_contrat
+            and int(contrat.get("id", 0)) != data.contrat_id
+        ), None)
+        if doublon:
+            raise HTTPException(status_code=409, detail=f"Le numéro de contrat {num_contrat} est déjà utilisé par un autre contrat.")
+    ok, detail = update_contrat_details(data.contrat_id, data.immat.strip().upper(), data.pieces, num_contrat)
     if not ok:
         raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
