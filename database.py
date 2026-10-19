@@ -185,10 +185,12 @@ def _mutation_result(response, action):
         detail += f" : {explication}"
     return False, detail
 
-def update_contrat_details(contrat_id, immat, pieces):
+def update_contrat_details(contrat_id, immat, pieces, num_contrat=""):
     if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
     url = f"{SUPABASE_URL}/rest/v1/contrats?id=eq.{contrat_id}"
     payload = {"immat": immat, "pieces_manquantes": json.dumps(pieces)}
+    if num_contrat:
+        payload["num_contrat"] = num_contrat
     response = requests.patch(url, headers=get_headers(), json=payload)
     return _mutation_result(response, "Modification du contrat")
 
