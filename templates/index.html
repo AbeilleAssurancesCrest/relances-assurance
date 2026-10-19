@@ -741,7 +741,7 @@
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <label class="form-label fw-bold small text-light-custom">N° CONTRAT</label>
-                <input type="text" id="editNumContrat" class="form-control opacity-75" readonly>
+                <input type="text" id="editNumContrat" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" title="Le numéro de contrat doit comporter 8 chiffres" oninput="this.value=this.value.replace(/\D/g, '').slice(0, 8)">
             </div>
             <div class="col-md-3">
                 <label class="form-label fw-bold small text-light-custom">TYPE VÉHICULE</label>
@@ -1833,11 +1833,12 @@ async function marquerToutesPiecesRecues() {
     if (!confirm('Confirmer que toutes les pièces de ce contrat ont bien été reçues ?')) return;
     const id = parseInt(document.getElementById('editContratId').value);
     const immat = document.getElementById('editImmat').value.toUpperCase();
+    const num_contrat = document.getElementById('editNumContrat').value.trim();
     const response = await fetch('/api/contrats/update', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({contrat_id: id, immat, pieces: []})
+        body: JSON.stringify({contrat_id: id, immat, num_contrat, pieces: []})
     });
-    if (!response.ok) { alert('La mise à jour a échoué. Réessaie.'); return; }
+    if (!response.ok) { const erreur = await response.json().catch(() => ({})); alert(erreur.detail || 'La mise à jour a échoué. Réessaie.'); return; }
     bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
     await chargerDossiers();
     afficherNotification('Toutes les pièces sont validées ✓');
@@ -1846,19 +1847,22 @@ async function marquerToutesPiecesRecues() {
 async function sauvegarderContratDetail() {
     let id = document.getElementById('editContratId').value;
     let immat = document.getElementById('editImmat').value.toUpperCase();
+    let num_contrat = document.getElementById('editNumContrat').value.trim();
     let pieces = Array.from(document.querySelectorAll('#editListePieces input:checked')).map(c => c.value);
+
+    if (!/^\d{8}$/.test(num_contrat)) { alert('Le numéro de contrat doit comporter exactement 8 chiffres.'); return; }
 
     const response = await fetch('/api/contrats/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ contrat_id: parseInt(id), immat: immat, pieces: pieces })
+        body: JSON.stringify({ contrat_id: parseInt(id), immat: immat, num_contrat, pieces: pieces })
     });
 
-    if (!response.ok) { alert('Les modifications du contrat n’ont pas pu être enregistrées.'); return; }
+    if (!response.ok) { const erreur = await response.json().catch(() => ({})); alert(erreur.detail || 'Les modifications du contrat n’ont pas pu être enregistrées.'); return; }
 
     bootstrap.Modal.getInstance(document.getElementById('modalContrat')).hide();
     await chargerDossiers();
-    afficherNotification('Pièces justificatives mises à jour ✓');
+    afficherNotification('Contrat et justificatifs mis à jour ✓');
 }
 
 function ouvrirCommentaire(id, commActuel) {
