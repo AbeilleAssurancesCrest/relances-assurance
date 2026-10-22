@@ -304,6 +304,44 @@ def archiver_rendez_vous_commercial(rendez_vous_id, archive=True):
     response = requests.patch(url, headers=get_headers(), json={"archive": bool(archive)})
     return _mutation_result(response, "Archivage du suivi commercial")
 
+def get_suivis_fidelisation():
+    if not SUPABASE_KEY: return None
+    url = f"{SUPABASE_URL}/rest/v1/suivis_fidelisation?select=*&order=date_demande.desc"
+    response = requests.get(url, headers=get_headers())
+    return response.json() if response.status_code == 200 else None
+
+def _suivi_fidelisation_payload(data):
+    return {
+        "client_id": data.get("client_id"),
+        "nom": (data.get("nom") or "").strip().upper(),
+        "prenom": (data.get("prenom") or "").strip(),
+        "email": (data.get("email") or "").strip(),
+        "telephone": (data.get("telephone") or "").strip(),
+        "motif": data.get("motif", ""),
+        "statut": data.get("statut", "RI demandé"),
+        "date_demande": data.get("date_demande"),
+        "date_recontact": data.get("date_recontact") or None,
+        "notes": (data.get("notes") or "").strip(),
+    }
+
+def add_suivi_fidelisation(data):
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/suivis_fidelisation"
+    response = requests.post(url, headers=get_headers(), json=_suivi_fidelisation_payload(data))
+    return _mutation_result(response, "Création du suivi fidélisation")
+
+def update_suivi_fidelisation(suivi_id, data):
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/suivis_fidelisation?id=eq.{suivi_id}"
+    response = requests.patch(url, headers=get_headers(), json=_suivi_fidelisation_payload(data))
+    return _mutation_result(response, "Modification du suivi fidélisation")
+
+def delete_suivi_fidelisation(suivi_id):
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/suivis_fidelisation?id=eq.{suivi_id}"
+    response = requests.delete(url, headers=get_headers())
+    return _mutation_result(response, "Suppression du suivi fidélisation")
+
 def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu, type_echange="Autre"):
     if not SUPABASE_KEY:
         return False, "La connexion à Supabase n’est pas configurée sur le serveur."
