@@ -80,6 +80,11 @@
         .commercial-view-tabs .nav-link.active { color: #202124; background: var(--abeille-yellow); border-color: var(--abeille-yellow); font-weight: 700; }
         .fidelisation-date-hint { color: var(--chrome-text-sub); font-size: .86rem; }
         .fidelisation-notes { min-width: 220px; max-width: 360px; white-space: normal; }
+        #modalSuiviFidelisation .modal-dialog { height: calc(100vh - 1rem); max-height: calc(100vh - 1rem); margin: .5rem auto; }
+        #modalSuiviFidelisation .modal-content { height: 100%; max-height: 100%; display: flex; flex-direction: column; }
+        #modalSuiviFidelisation #formSuiviFidelisation { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+        #modalSuiviFidelisation .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+        #modalSuiviFidelisation .modal-footer { flex: 0 0 auto; }
 
         .app-tabs {
             border-bottom: 1px solid var(--chrome-border);
@@ -740,11 +745,10 @@
         </div>
         <div id="fidelisationDatabaseNotice" class="alert alert-warning d-none" role="status">Le suivi de fidélisation n’est pas encore accessible. La table dédiée doit être créée dans Supabase.</div>
         <div class="row g-3 mb-3">
-            <div class="col-6 col-xl"><div class="status-card status-card-orange"><span class="status-card-title">📄 RI demandé</span><span class="status-card-count" id="fidelisationCountRi">0</span></div></div>
-            <div class="col-6 col-xl"><div class="status-card status-card-neutral"><span class="status-card-title">📤 RI transmis</span><span class="status-card-count" id="fidelisationCountRiTransmis">0</span></div></div>
-            <div class="col-6 col-xl"><div class="status-card status-card-red"><span class="status-card-title">🚪 Départ confirmé</span><span class="status-card-count" id="fidelisationCountDepart">0</span></div></div>
-            <div class="col-6 col-xl"><div class="status-card status-card-green"><span class="status-card-title">📅 À recontacter</span><span class="status-card-count" id="fidelisationCountRappel">0</span></div></div>
-            <div class="col-12 col-xl"><div class="status-card status-card-neutral"><span class="status-card-title">🏠 Clients revenus</span><span class="status-card-count" id="fidelisationCountRevenus">0</span></div></div>
+            <div class="col-6 col-xl-3"><div class="status-card status-card-orange"><span class="status-card-title">📄 RI demandé</span><span class="status-card-count" id="fidelisationCountRi">0</span></div></div>
+            <div class="col-6 col-xl-3"><div class="status-card status-card-red"><span class="status-card-title">🚪 Départ souhaité / confirmé</span><span class="status-card-count" id="fidelisationCountDepart">0</span></div></div>
+            <div class="col-6 col-xl-3"><div class="status-card status-card-green"><span class="status-card-title">📅 À recontacter</span><span class="status-card-count" id="fidelisationCountRappel">0</span></div></div>
+            <div class="col-6 col-xl-3"><div class="status-card status-card-neutral"><span class="status-card-title">📋 Revue de contrats demandée</span><span class="status-card-count" id="fidelisationCountRevue">0</span></div></div>
         </div>
         <div class="card card-custom">
             <div class="card-header card-header-chrome d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -827,7 +831,7 @@
             <div class="col-md-6"><label for="suiviFidelisationEmail" class="form-label">E-mail</label><input id="suiviFidelisationEmail" type="email" class="form-control"></div>
             <div class="col-md-6"><label for="suiviFidelisationTelephone" class="form-label">Téléphone</label><input id="suiviFidelisationTelephone" class="form-control"></div>
             <div class="col-md-6"><label for="suiviFidelisationStatut" class="form-label">Étape du suivi *</label>
-              <select id="suiviFidelisationStatut" class="form-select" required><option>RI demandé</option><option>RI transmis</option><option>Départ confirmé</option><option>À recontacter</option><option>Client revenu</option></select>
+              <select id="suiviFidelisationStatut" class="form-select" required><option>RI demandé</option><option>Souhaite partir</option><option>Départ confirmé</option><option>À recontacter</option><option>Revue de contrats demandée</option></select>
             </div>
             <div class="col-md-6"><label for="suiviFidelisationDateDemande" class="form-label">Date de la demande / du départ *</label><input id="suiviFidelisationDateDemande" type="date" class="form-control" required></div>
             <div class="col-md-7"><label for="suiviFidelisationDateRappel" class="form-label">Date de rappel (facultative)</label><input id="suiviFidelisationDateRappel" type="date" class="form-control"><div class="fidelisation-date-hint mt-1">Aucun rappel n’est programmé si tu laisses ce champ vide.</div></div>
@@ -1238,16 +1242,10 @@ async function chargerSuivisFidelisation() {
 }
 
 function afficherSuivisFidelisation() {
-    const compteurs = {
-        'RI demandé': 'fidelisationCountRi',
-        'RI transmis': 'fidelisationCountRiTransmis',
-        'Départ confirmé': 'fidelisationCountDepart',
-        'À recontacter': 'fidelisationCountRappel',
-        'Client revenu': 'fidelisationCountRevenus'
-    };
-    Object.entries(compteurs).forEach(([statut, id]) => {
-        document.getElementById(id).textContent = suivisFidelisation.filter(suivi => suivi.statut === statut).length;
-    });
+    document.getElementById('fidelisationCountRi').textContent = suivisFidelisation.filter(suivi => suivi.statut === 'RI demandé').length;
+    document.getElementById('fidelisationCountDepart').textContent = suivisFidelisation.filter(suivi => ['Souhaite partir', 'Départ confirmé'].includes(suivi.statut)).length;
+    document.getElementById('fidelisationCountRappel').textContent = suivisFidelisation.filter(suivi => suivi.statut === 'À recontacter').length;
+    document.getElementById('fidelisationCountRevue').textContent = suivisFidelisation.filter(suivi => suivi.statut === 'Revue de contrats demandée').length;
     const terme = normaliserIdentite(document.getElementById('rechercheFidelisation').value);
     const lignes = suivisFidelisation.filter(suivi =>
         [suivi.nom, suivi.prenom, suivi.email, suivi.telephone, suivi.statut].some(valeur => normaliserIdentite(valeur).includes(terme))
@@ -1257,7 +1255,7 @@ function afficherSuivisFidelisation() {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-light-custom">Aucun suivi de fidélisation dans cette liste.</td></tr>';
         return;
     }
-    const couleurs = {'RI demandé':'badge-orange', 'RI transmis':'badge-vert', 'Départ confirmé':'bg-secondary', 'À recontacter':'badge-orange', 'Client revenu':'badge-vert'};
+    const couleurs = {'RI demandé':'badge-orange', 'Souhaite partir':'badge-rouge', 'Départ confirmé':'bg-secondary', 'À recontacter':'badge-orange', 'Revue de contrats demandée':'badge-vert'};
     tbody.innerHTML = lignes.map(suivi => {
         const nom = `${suivi.prenom || ''} ${suivi.nom || ''}`.trim();
         const contacts = [suivi.email, suivi.telephone].filter(Boolean).map(echapperHtml).join('<br>');
@@ -1299,7 +1297,14 @@ function ouvrirSuiviFidelisation(id = null) {
         document.getElementById('suiviFidelisationPrenom').value = suivi.prenom || '';
         document.getElementById('suiviFidelisationEmail').value = suivi.email || '';
         document.getElementById('suiviFidelisationTelephone').value = suivi.telephone || '';
-        document.getElementById('suiviFidelisationStatut').value = suivi.statut || 'RI demandé';
+        const selectStatut = document.getElementById('suiviFidelisationStatut');
+        selectStatut.querySelectorAll('option[data-statut-ancien]').forEach(option => option.remove());
+        if (suivi.statut && !Array.from(selectStatut.options).some(option => option.value === suivi.statut)) {
+            const ancien = new Option(`${suivi.statut} (ancien statut)`, suivi.statut);
+            ancien.dataset.statutAncien = 'true';
+            selectStatut.add(ancien);
+        }
+        selectStatut.value = suivi.statut || 'RI demandé';
         document.getElementById('suiviFidelisationDateDemande').value = (suivi.date_demande || '').slice(0, 10);
         document.getElementById('suiviFidelisationDateRappel').value = (suivi.date_recontact || '').slice(0, 10);
         document.getElementById('suiviFidelisationNotes').value = suivi.notes || '';
