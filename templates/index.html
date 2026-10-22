@@ -78,6 +78,8 @@
 
         .commercial-view-tabs .nav-link { color: var(--chrome-text-sub); border: 1px solid var(--chrome-border); }
         .commercial-view-tabs .nav-link.active { color: #202124; background: var(--abeille-yellow); border-color: var(--abeille-yellow); font-weight: 700; }
+        .fidelisation-date-hint { color: var(--chrome-text-sub); font-size: .86rem; }
+        .fidelisation-notes { min-width: 220px; max-width: 360px; white-space: normal; }
 
         .app-tabs {
             border-bottom: 1px solid var(--chrome-border);
@@ -553,6 +555,9 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-commercial" data-bs-toggle="pill" data-bs-target="#paneCommercial" type="button" role="tab" aria-controls="paneCommercial" aria-selected="false">🤝 Gestion commerciale</button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-fidelisation" data-bs-toggle="pill" data-bs-target="#paneFidelisation" type="button" role="tab" aria-controls="paneFidelisation" aria-selected="false">💛 Fidélisation & reconquête</button>
+        </li>
     </ul>
 
     <div class="tab-content">
@@ -724,6 +729,36 @@
             </div>
         </div>
     </section>
+
+    <section class="tab-pane fade" id="paneFidelisation" role="tabpanel" aria-labelledby="tab-fidelisation">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <div>
+                <h2 class="h4 text-warning fw-google mb-1">💛 Fidélisation & reconquête</h2>
+                <p class="mb-0 text-light-custom">Suivi des demandes de relevé d’information, des départs et des clients à retrouver.</p>
+            </div>
+            <button type="button" class="btn btn-abeille" onclick="ouvrirSuiviFidelisation()">＋ Ajouter un suivi</button>
+        </div>
+        <div id="fidelisationDatabaseNotice" class="alert alert-warning d-none" role="status">Le suivi de fidélisation n’est pas encore accessible. La table dédiée doit être créée dans Supabase.</div>
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-xl"><div class="status-card status-card-orange"><span class="status-card-title">📄 RI demandé</span><span class="status-card-count" id="fidelisationCountRi">0</span></div></div>
+            <div class="col-6 col-xl"><div class="status-card status-card-neutral"><span class="status-card-title">📤 RI transmis</span><span class="status-card-count" id="fidelisationCountRiTransmis">0</span></div></div>
+            <div class="col-6 col-xl"><div class="status-card status-card-red"><span class="status-card-title">🚪 Départ confirmé</span><span class="status-card-count" id="fidelisationCountDepart">0</span></div></div>
+            <div class="col-6 col-xl"><div class="status-card status-card-green"><span class="status-card-title">📅 À recontacter</span><span class="status-card-count" id="fidelisationCountRappel">0</span></div></div>
+            <div class="col-12 col-xl"><div class="status-card status-card-neutral"><span class="status-card-title">🏠 Clients revenus</span><span class="status-card-count" id="fidelisationCountRevenus">0</span></div></div>
+        </div>
+        <div class="card card-custom">
+            <div class="card-header card-header-chrome d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span>📋 Suivi des départs et retours</span>
+                <input type="search" id="rechercheFidelisation" class="form-control form-control-sm search-input ms-auto" style="max-width:300px" placeholder="🔍 Rechercher un client…" aria-label="Rechercher dans les suivis de fidélisation" oninput="afficherSuivisFidelisation()">
+            </div>
+            <div class="card-body card-body-chrome p-0"><div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr class="small text-uppercase table-head-chrome"><th class="ps-4">Client</th><th>Étape</th><th>Date de la demande</th><th>Rappel éventuel</th><th>Notes</th><th class="text-center pe-4">Actions</th></tr></thead>
+                    <tbody id="tableSuivisFidelisation"></tbody>
+                </table>
+            </div></div>
+        </div>
+    </section>
     </div>
 
 </div>
@@ -766,6 +801,41 @@
           </div>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-abeille" id="btnSauverRdvCommercial">Enregistrer le suivi</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Formulaire fidélisation et reconquête -->
+<div class="modal fade" id="modalSuiviFidelisation" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content modal-content-chrome">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold text-warning app-title" id="titreModalFidelisation">💛 Nouveau suivi de fidélisation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <form id="formSuiviFidelisation" onsubmit="event.preventDefault(); enregistrerSuiviFidelisation();">
+        <div class="modal-body">
+          <input type="hidden" id="suiviFidelisationId">
+          <div class="mb-3">
+            <label for="suiviFidelisationClient" class="form-label">Client déjà dans l’application (facultatif)</label>
+            <select id="suiviFidelisationClient" class="form-select" onchange="selectionnerClientFidelisation()"><option value="">Saisir un client manuellement</option></select>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6"><label for="suiviFidelisationNom" class="form-label">Nom *</label><input id="suiviFidelisationNom" class="form-control" required maxlength="120"></div>
+            <div class="col-md-6"><label for="suiviFidelisationPrenom" class="form-label">Prénom</label><input id="suiviFidelisationPrenom" class="form-control" maxlength="120"></div>
+            <div class="col-md-6"><label for="suiviFidelisationEmail" class="form-label">E-mail</label><input id="suiviFidelisationEmail" type="email" class="form-control"></div>
+            <div class="col-md-6"><label for="suiviFidelisationTelephone" class="form-label">Téléphone</label><input id="suiviFidelisationTelephone" class="form-control"></div>
+            <div class="col-md-6"><label for="suiviFidelisationStatut" class="form-label">Étape du suivi *</label>
+              <select id="suiviFidelisationStatut" class="form-select" required><option>RI demandé</option><option>RI transmis</option><option>Départ confirmé</option><option>À recontacter</option><option>Client revenu</option></select>
+            </div>
+            <div class="col-md-6"><label for="suiviFidelisationDateDemande" class="form-label">Date de la demande / du départ *</label><input id="suiviFidelisationDateDemande" type="date" class="form-control" required></div>
+            <div class="col-md-7"><label for="suiviFidelisationDateRappel" class="form-label">Date de rappel (facultative)</label><input id="suiviFidelisationDateRappel" type="date" class="form-control"><div class="fidelisation-date-hint mt-1">Aucun rappel n’est programmé si tu laisses ce champ vide.</div></div>
+            <div class="col-md-5 d-flex align-items-end"><button type="button" class="btn btn-outline-warning w-100" onclick="definirRappelDansUnAn()">📅 Me le rappeler dans un an</button></div>
+            <div class="col-12"><label for="suiviFidelisationNotes" class="form-label">Notes / suite donnée</label><textarea id="suiviFidelisationNotes" class="form-control" rows="4" placeholder="Ex. RI envoyé, date de départ, raison, éléments à reprendre lors du rappel…"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-abeille" id="btnSauverFidelisation">Enregistrer le suivi</button></div>
       </form>
     </div>
   </div>
@@ -914,12 +984,15 @@ let filtreStatutActif = 'tous';
 let rendezVousCommerciaux = [];
 let filtreCommercialActif = 'tous';
 let vueCommerciale = 'actifs';
+let suivisFidelisation = [];
 
 document.querySelectorAll('[data-bs-toggle="pill"]').forEach(onglet => {
     onglet.addEventListener('shown.bs.tab', evenement => {
         const titre = evenement.target.id === 'tab-commercial'
             ? 'Gestion commerciale 🤝'
-            : 'Gestion & suivi des justificatifs 📁';
+            : evenement.target.id === 'tab-fidelisation'
+                ? 'Fidélisation & reconquête 💛'
+                : 'Gestion & suivi des justificatifs 📁';
         document.getElementById('titreApplication').textContent = titre;
     });
 });
@@ -1078,6 +1151,7 @@ function recalculerTitresContrats() {
 async function chargerDossiers() {
     let res = await fetch('/api/dossiers');
     tousLesClients = await res.json();
+    remplirListeClientsFidelisation();
     const priorite = {rouge: 0, orange: 1, vert: 2};
     tousLesClients.sort((a, b) => (priorite[a.niveau_urgence] ?? 3) - (priorite[b.niveau_urgence] ?? 3));
     mettreAJourCompteursStatut();
@@ -1124,6 +1198,148 @@ async function chargerRendezVousCommerciaux() {
         notice.classList.remove('d-none');
     }
     afficherRendezVousCommerciaux();
+}
+
+function remplirListeClientsFidelisation(clientId = '') {
+    const select = document.getElementById('suiviFidelisationClient');
+    if (!select) return;
+    const selection = clientId || select.value;
+    select.replaceChildren(new Option('Saisir un client manuellement', ''));
+    tousLesClients.forEach(client => {
+        const nomComplet = `${client.prenom || ''} ${client.nom || ''}`.trim();
+        select.add(new Option(`${nomComplet} — ${(client.contrats || []).length} contrat(s)`, client.id));
+    });
+    select.value = selection;
+}
+
+function selectionnerClientFidelisation() {
+    const id = document.getElementById('suiviFidelisationClient').value;
+    const client = tousLesClients.find(element => String(element.id) === String(id));
+    if (!client) return;
+    document.getElementById('suiviFidelisationNom').value = client.nom || '';
+    document.getElementById('suiviFidelisationPrenom').value = client.prenom || '';
+    document.getElementById('suiviFidelisationEmail').value = client.email || '';
+    document.getElementById('suiviFidelisationTelephone').value = client.telephone || '';
+}
+
+async function chargerSuivisFidelisation() {
+    const notice = document.getElementById('fidelisationDatabaseNotice');
+    try {
+        const response = await fetch('/api/fidelisation');
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data)) throw new Error('Suivi de fidélisation indisponible');
+        suivisFidelisation = data;
+        notice.classList.add('d-none');
+    } catch (erreur) {
+        suivisFidelisation = [];
+        notice.classList.remove('d-none');
+    }
+    afficherSuivisFidelisation();
+}
+
+function afficherSuivisFidelisation() {
+    const compteurs = {
+        'RI demandé': 'fidelisationCountRi',
+        'RI transmis': 'fidelisationCountRiTransmis',
+        'Départ confirmé': 'fidelisationCountDepart',
+        'À recontacter': 'fidelisationCountRappel',
+        'Client revenu': 'fidelisationCountRevenus'
+    };
+    Object.entries(compteurs).forEach(([statut, id]) => {
+        document.getElementById(id).textContent = suivisFidelisation.filter(suivi => suivi.statut === statut).length;
+    });
+    const terme = normaliserIdentite(document.getElementById('rechercheFidelisation').value);
+    const lignes = suivisFidelisation.filter(suivi =>
+        [suivi.nom, suivi.prenom, suivi.email, suivi.telephone, suivi.statut].some(valeur => normaliserIdentite(valeur).includes(terme))
+    );
+    const tbody = document.getElementById('tableSuivisFidelisation');
+    if (!lignes.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-light-custom">Aucun suivi de fidélisation dans cette liste.</td></tr>';
+        return;
+    }
+    const couleurs = {'RI demandé':'badge-orange', 'RI transmis':'badge-vert', 'Départ confirmé':'bg-secondary', 'À recontacter':'badge-orange', 'Client revenu':'badge-vert'};
+    tbody.innerHTML = lignes.map(suivi => {
+        const nom = `${suivi.prenom || ''} ${suivi.nom || ''}`.trim();
+        const contacts = [suivi.email, suivi.telephone].filter(Boolean).map(echapperHtml).join('<br>');
+        const dateDemande = suivi.date_demande ? formatDateFR(suivi.date_demande) : '—';
+        const dateRappel = suivi.date_recontact ? formatDateFR(suivi.date_recontact) : 'Pas de rappel prévu';
+        const notes = (suivi.notes || '').trim();
+        return `<tr>
+            <td class="ps-4"><strong class="client-nom-highlight">${echapperHtml(suivi.nom)}</strong> ${echapperHtml(suivi.prenom)}<div class="small text-light-custom">${contacts || '—'}</div></td>
+            <td><span class="badge ${couleurs[suivi.statut] || 'bg-secondary'} badge-pill-custom">${echapperHtml(suivi.statut)}</span></td>
+            <td class="text-nowrap">${echapperHtml(dateDemande)}</td>
+            <td class="text-nowrap">${echapperHtml(dateRappel)}</td>
+            <td class="fidelisation-notes">${notes ? echapperHtml(notes.length > 160 ? `${notes.slice(0, 160)}…` : notes) : '<span class="text-light-custom">—</span>'}</td>
+            <td class="text-center pe-4"><button type="button" class="btn btn-outline-warning btn-sm" onclick="ouvrirSuiviFidelisation(${Number(suivi.id)})">Modifier</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function definirRappelDansUnAn() {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    document.getElementById('suiviFidelisationDateRappel').value = datePourChampLocal(date);
+    document.getElementById('suiviFidelisationStatut').value = 'À recontacter';
+}
+
+function ouvrirSuiviFidelisation(id = null) {
+    const formulaire = document.getElementById('formSuiviFidelisation');
+    formulaire.reset();
+    remplirListeClientsFidelisation();
+    document.getElementById('suiviFidelisationId').value = '';
+    document.getElementById('suiviFidelisationDateDemande').value = datePourChampLocal(new Date());
+    document.getElementById('titreModalFidelisation').textContent = id ? '✏️ Modifier le suivi' : '💛 Nouveau suivi de fidélisation';
+    document.getElementById('btnSauverFidelisation').textContent = id ? 'Enregistrer les modifications' : 'Enregistrer le suivi';
+    if (id) {
+        const suivi = suivisFidelisation.find(element => Number(element.id) === Number(id));
+        if (!suivi) return;
+        document.getElementById('suiviFidelisationId').value = suivi.id;
+        remplirListeClientsFidelisation(suivi.client_id || '');
+        document.getElementById('suiviFidelisationNom').value = suivi.nom || '';
+        document.getElementById('suiviFidelisationPrenom').value = suivi.prenom || '';
+        document.getElementById('suiviFidelisationEmail').value = suivi.email || '';
+        document.getElementById('suiviFidelisationTelephone').value = suivi.telephone || '';
+        document.getElementById('suiviFidelisationStatut').value = suivi.statut || 'RI demandé';
+        document.getElementById('suiviFidelisationDateDemande').value = (suivi.date_demande || '').slice(0, 10);
+        document.getElementById('suiviFidelisationDateRappel').value = (suivi.date_recontact || '').slice(0, 10);
+        document.getElementById('suiviFidelisationNotes').value = suivi.notes || '';
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSuiviFidelisation')).show();
+}
+
+async function enregistrerSuiviFidelisation() {
+    const id = document.getElementById('suiviFidelisationId').value;
+    const clientSelectionne = document.getElementById('suiviFidelisationClient').value;
+    const donnees = {
+        client_id: clientSelectionne ? Number(clientSelectionne) : null,
+        nom: document.getElementById('suiviFidelisationNom').value.trim().toLocaleUpperCase('fr-FR'),
+        prenom: document.getElementById('suiviFidelisationPrenom').value.trim(),
+        email: document.getElementById('suiviFidelisationEmail').value.trim(),
+        telephone: document.getElementById('suiviFidelisationTelephone').value.trim(),
+        statut: document.getElementById('suiviFidelisationStatut').value,
+        date_demande: document.getElementById('suiviFidelisationDateDemande').value,
+        date_recontact: document.getElementById('suiviFidelisationDateRappel').value,
+        notes: document.getElementById('suiviFidelisationNotes').value.trim()
+    };
+    const bouton = document.getElementById('btnSauverFidelisation');
+    bouton.disabled = true;
+    try {
+        const response = await fetch(id ? `/api/fidelisation/${id}` : '/api/fidelisation', {
+            method: id ? 'PUT' : 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(donnees)
+        });
+        if (!response.ok) {
+            const erreur = await response.json().catch(() => ({}));
+            alert(erreur.detail || 'Le suivi n’a pas pu être enregistré.');
+            return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('modalSuiviFidelisation')).hide();
+        await chargerSuivisFidelisation();
+        afficherNotification(id ? 'Suivi de fidélisation mis à jour ✓' : 'Suivi de fidélisation enregistré ✓');
+    } finally {
+        bouton.disabled = false;
+    }
 }
 
 function statutCommercialSuivi(rdv) {
@@ -2106,7 +2322,7 @@ async function voirHistorique(id) {
 }
 
 reinitialiserFormulaire();
-Promise.allSettled([chargerDossiers(), chargerRendezVousCommerciaux()]).then(() => {
+Promise.allSettled([chargerDossiers(), chargerRendezVousCommerciaux(), chargerSuivisFidelisation()]).then(() => {
     document.getElementById('ecranChargement')?.classList.add('termine');
 });
 </script>
