@@ -76,6 +76,9 @@
         .commercial-contract-summary { max-width:220px; white-space:normal; }
         .commercial-last-touch { min-width:190px; max-width:260px; white-space:normal; }
 
+        .commercial-view-tabs .nav-link { color: var(--chrome-text-sub); border: 1px solid var(--chrome-border); }
+        .commercial-view-tabs .nav-link.active { color: #202124; background: var(--abeille-yellow); border-color: var(--abeille-yellow); font-weight: 700; }
+
         .app-tabs {
             border-bottom: 1px solid var(--chrome-border);
             padding-bottom: 0.7rem;
@@ -689,6 +692,11 @@
         </div>
         <div id="commercialDatabaseNotice" class="alert alert-warning d-none" role="status">Le suivi commercial n’est pas encore accessible. Vérifie la migration SQL dans Supabase et la connexion de l’application à la base.</div>
 
+        <ul class="nav nav-pills commercial-view-tabs mb-3" aria-label="Vue des suivis commerciaux">
+            <li class="nav-item"><button type="button" class="nav-link active" id="ongletSuivisActifs" onclick="choisirVueCommerciale('actifs')">Suivis actifs</button></li>
+            <li class="nav-item"><button type="button" class="nav-link" id="ongletSuivisArchives" onclick="choisirVueCommerciale('archives')">Sans suite · Archives <span class="badge text-bg-secondary ms-1" id="commercialCountArchives">0</span></button></li>
+        </ul>
+
         <div class="row g-3 mb-4">
             <div class="col-6 col-xl-3"><button class="status-card status-card-orange" data-commercial-filter="avenir" onclick="filtrerRendezVousCommerciaux('avenir')"><span class="status-card-title">🗓️ À venir</span><span class="status-card-count" id="commercialCountAvenir">0</span><span class="status-card-hint">Rendez-vous planifiés</span></button></div>
             <div class="col-6 col-xl-3"><button class="status-card status-card-red" data-commercial-filter="suivi" onclick="filtrerRendezVousCommerciaux('suivi')"><span class="status-card-title">📌 À suivre</span><span class="status-card-count" id="commercialCountSuivi">0</span><span class="status-card-hint">Prochaine action à faire</span></button></div>
@@ -905,6 +913,7 @@ let nombreContratsActifs = 0;
 let filtreStatutActif = 'tous';
 let rendezVousCommerciaux = [];
 let filtreCommercialActif = 'tous';
+let vueCommerciale = 'actifs';
 
 document.querySelectorAll('[data-bs-toggle="pill"]').forEach(onglet => {
     onglet.addEventListener('shown.bs.tab', evenement => {
@@ -1133,6 +1142,32 @@ function filtrerRendezVousCommerciaux(filtre) {
     afficherRendezVousCommerciaux();
 }
 
+function choisirVueCommerciale(vue) {
+    vueCommerciale = vue === 'archives' ? 'archives' : 'actifs';
+    document.getElementById('ongletSuivisActifs').classList.toggle('active', vueCommerciale === 'actifs');
+    document.getElementById('ongletSuivisArchives').classList.toggle('active', vueCommerciale === 'archives');
+    document.querySelectorAll('[data-commercial-filter]').forEach(carte => carte.disabled = vueCommerciale === 'archives');
+    afficherRendezVousCommerciaux();
+}
+
+async function modifierArchivageCommercial(id, archive) {
+    const rdv = rendezVousCommerciaux.find(element => Number(element.id) === Number(id));
+    if (!rdv) return;
+    const response = await fetch(`/api/rendez-vous-commerciaux/${id}/archive`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({archive})
+    });
+    if (!response.ok) {
+        const erreur = await response.json().catch(() => ({}));
+        alert(erreur.detail || 'Le classement du suivi a échoué.');
+        return;
+    }
+    rdv.archive = archive;
+    afficherRendezVousCommerciaux();
+    afficherNotification(archive ? 'Dossier classé dans Sans suite ✓' : 'Dossier réactivé ✓');
+}
+
 function afficherRendezVousCommerciaux() {
     const aujourdHui = new Date();
     aujourdHui.setHours(0, 0, 0, 0);
@@ -1140,13 +1175,16 @@ function afficherRendezVousCommerciaux() {
         const date = new Date(rdv.date_rdv);
         return new Date(date.getFullYear(), date.getMonth(), date.getDate()) >= aujourdHui;
     };
-    const aVenir = rendezVousCommerciaux.filter(rdv => rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv)).length;
-    const aSuivre = rendezVousCommerciaux.filter(statutCommercialSuivi).length;
-    const devisValides = rendezVousCommerciaux.filter(rdv => statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné').length;
+    const suivisActifs = rendezVousCommerciaux.filter(rdv => !rdv.archive);
+    const suivisArchives = rendezVousCommerciaux.filter(rdv => rdv.archive);
+    const aVenir = suivisActifs.filter(rdv => rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv)).length;
+    const aSuivre = suivisActifs.filter(statutCommercialSuivi).length;
+    const devisValides = suivisActifs.filter(rdv => statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné').length;
     document.getElementById('commercialCountAvenir').textContent = aVenir;
     document.getElementById('commercialCountSuivi').textContent = aSuivre;
     document.getElementById('commercialCountValides').textContent = devisValides;
-    document.getElementById('commercialCountTous').textContent = rendezVousCommerciaux.length;
+    document.getElementById('commercialCountTous').textContent = suivisActifs.length;
+    document.getElementById('commercialCountArchives').textContent = suivisArchives.length;
     document.querySelectorAll('[data-commercial-filter]').forEach(carte => {
         carte.classList.toggle('active', carte.dataset.commercialFilter === filtreCommercialActif);
     });
@@ -1155,9 +1193,10 @@ function afficherRendezVousCommerciaux() {
     const profilFiltre = document.getElementById('filtreProfilCommercial').value;
     const lignes = rendezVousCommerciaux
         .filter(rdv => {
-            if (filtreCommercialActif === 'avenir' && !(rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv))) return false;
-            if (filtreCommercialActif === 'suivi' && !statutCommercialSuivi(rdv)) return false;
-            if (filtreCommercialActif === 'valides' && !(statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné')) return false;
+            if (Boolean(rdv.archive) !== (vueCommerciale === 'archives')) return false;
+            if (vueCommerciale === 'actifs' && filtreCommercialActif === 'avenir' && !(rdv.statut === 'RDV à venir' && dateDuJourOuApres(rdv))) return false;
+            if (vueCommerciale === 'actifs' && filtreCommercialActif === 'suivi' && !statutCommercialSuivi(rdv)) return false;
+            if (vueCommerciale === 'actifs' && filtreCommercialActif === 'valides' && !(statutsCommerciauxConcluants.includes(rdv.statut) || rdv.statut === 'Gagné')) return false;
             if (profilFiltre && rdv.profil !== profilFiltre) return false;
             const recherche = [rdv.nom, rdv.prenom, rdv.email, rdv.telephone, rdv.besoin, rdv.statut, profilsCommerciaux[rdv.profil]]
                 .some(valeur => normaliserIdentite(valeur).includes(terme));
@@ -1188,6 +1227,9 @@ function afficherRendezVousCommerciaux() {
             : `<div class="small text-light-custom">Premier contact · ${echapperHtml(formatDateFR((rdv.date_rdv || '').slice(0, 10)))}</div>`;
         const prochaineAction = `<input type="date" class="form-control form-control-sm commercial-next-action mb-1" aria-label="Date de la prochaine action pour ${echapperHtml(rdv.nom)}" value="${echapperHtml((rdv.prochaine_action || '').slice(0, 10))}" onchange="enregistrerProchaineActionRapide(${Number(rdv.id)}, this)"><select class="form-select form-select-sm commercial-next-action" aria-label="Type de prochaine action pour ${echapperHtml(rdv.nom)}" onchange="enregistrerTypeProchaineActionRapide(${Number(rdv.id)}, this)"><option value="">— Action —</option>${['Appeler', 'Envoyer un devis', 'Relancer', 'Recontacter', 'Fixer un rendez-vous', 'Autre'].map(action => `<option value="${action}" ${rdv.type_prochaine_action === action ? 'selected' : ''}>${action}</option>`).join('')}</select>${rdv.statut === 'Offre envoyée' && rdv.prochaine_action ? `<div class="small ${statutCommercialSuivi(rdv) ? 'text-warning' : 'text-light-custom'} mt-1">Relance du devis ${statutCommercialSuivi(rdv) ? 'en retard' : 'prévue'} : ${echapperHtml(formatDateFR(rdv.prochaine_action))}</div>` : rdv.statut === 'À reconquérir' && rdv.prochaine_action ? `<div class="small text-light-custom mt-1">Rappel prévu : ${echapperHtml(formatDateFR(rdv.prochaine_action))}</div>` : ''}`;
         const comptesRendus = Array.isArray(rdv.comptes_rendus) ? rdv.comptes_rendus.length : 0;
+        const boutonArchivage = rdv.archive
+            ? `<button class="btn btn-outline-success btn-sm" onclick="modifierArchivageCommercial(${Number(rdv.id)}, false)">↩ Réactiver</button>`
+            : `<button class="btn btn-outline-secondary btn-sm" title="Classer ce dossier sans suite" onclick="modifierArchivageCommercial(${Number(rdv.id)}, true)">📦 Sans suite</button>`;
         const boutonDevisValide = estConclu
             ? `<span class="badge badge-vert badge-pill-custom">✅ ${echapperHtml(rdv.statut)}</span>`
             : `<button class="btn btn-outline-success btn-sm" onclick="marquerDevisValide(${Number(rdv.id)})">✅ Devis validé</button>`;
@@ -1201,6 +1243,7 @@ function afficherRendezVousCommerciaux() {
             <td>${prochaineAction}</td>
             <td class="text-center pe-4"><div class="d-flex flex-wrap justify-content-center gap-1">
                 <button class="btn btn-outline-info btn-sm" title="Consulter les notes" onclick="ouvrirComptesRendusRdv(${Number(rdv.id)})">📝 Notes <span class="badge text-bg-secondary">${comptesRendus}</span></button>
+                ${boutonArchivage}
                 <button class="btn btn-outline-warning btn-sm" onclick="ouvrirEditionRdvCommercial(${Number(rdv.id)})">Modifier</button>
                 <button class="btn btn-outline-danger btn-sm" onclick="supprimerRdvCommercial(${Number(rdv.id)})" aria-label="Supprimer le rendez-vous">🗑️</button>
             </div></td>
@@ -1397,6 +1440,7 @@ function datePourChampLocal(date) {
 }
 
 function ouvrirRendezVousCommercial() {
+    choisirVueCommerciale('actifs');
     const formulaire = document.getElementById('formRendezVousCommercial');
     document.querySelectorAll('#rdvCommercialStatut option[data-statut-ancien]').forEach(option => option.remove());
     formulaire.reset();
