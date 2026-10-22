@@ -298,6 +298,12 @@ def delete_rendez_vous_commercial(rendez_vous_id):
     response = requests.delete(url, headers=get_headers())
     return _mutation_result(response, "Suppression du rendez-vous commercial")
 
+def archiver_rendez_vous_commercial(rendez_vous_id, archive=True):
+    if not SUPABASE_KEY: return False, "La connexion à Supabase n’est pas configurée sur le serveur."
+    url = f"{SUPABASE_URL}/rest/v1/rendez_vous_commerciaux?id=eq.{rendez_vous_id}"
+    response = requests.patch(url, headers=get_headers(), json={"archive": bool(archive)})
+    return _mutation_result(response, "Archivage du suivi commercial")
+
 def add_compte_rendu_rendez_vous(rendez_vous_id, date_rdv, compte_rendu, type_echange="Autre"):
     if not SUPABASE_KEY:
         return False, "La connexion à Supabase n’est pas configurée sur le serveur."
