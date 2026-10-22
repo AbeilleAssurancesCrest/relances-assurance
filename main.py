@@ -181,7 +181,9 @@ def fetch_suivis_fidelisation():
 def valider_suivi_fidelisation(data: SuiviFidelisationSchema):
     if not data.nom.strip():
         raise HTTPException(status_code=400, detail="Le nom du client est obligatoire.")
-    statuts_valides = {"RI demandé", "RI transmis", "Départ confirmé", "À recontacter", "Client revenu"}
+    # Les anciens statuts restent acceptés pour permettre de modifier les dossiers
+    # déjà enregistrés, mais ils ne sont plus proposés pour les nouveaux suivis.
+    statuts_valides = {"RI demandé", "RI transmis", "Souhaite partir", "Départ confirmé", "À recontacter", "Revue de contrats demandée", "Client revenu"}
     if data.statut not in statuts_valides:
         raise HTTPException(status_code=400, detail="Choisis une étape de suivi valide.")
     try:
