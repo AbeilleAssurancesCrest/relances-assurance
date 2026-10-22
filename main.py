@@ -17,7 +17,9 @@ from database import (init_db, add_client_avec_contrats, get_all_clients,
                       update_rendez_vous_commercial, delete_rendez_vous_commercial,
                       archiver_rendez_vous_commercial,
                       add_compte_rendu_rendez_vous, update_compte_rendu_rendez_vous,
-                      delete_compte_rendu_rendez_vous)
+                      delete_compte_rendu_rendez_vous, get_suivis_fidelisation,
+                      add_suivi_fidelisation, update_suivi_fidelisation,
+                      delete_suivi_fidelisation)
 
 app = FastAPI()
 init_db()
@@ -94,6 +96,17 @@ class CompteRenduRendezVousSchema(BaseModel):
 class ArchivageRendezVousSchema(BaseModel):
     archive: bool
 
+class SuiviFidelisationSchema(BaseModel):
+    client_id: int | None = None
+    nom: str
+    prenom: str = ""
+    email: str = ""
+    telephone: str = ""
+    statut: str = "RI demandé"
+    date_demande: str
+    date_recontact: str = ""
+    notes: str = ""
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
@@ -157,6 +170,49 @@ def archive_rendez_vous_commercial(rendez_vous_id: int, data: ArchivageRendezVou
     if not ok:
         raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok", "archive": data.archive}
+
+@app.get("/api/fidelisation")
+def fetch_suivis_fidelisation():
+    result = get_suivis_fidelisation()
+    if result is None:
+        raise HTTPException(status_code=502, detail="Impossible de charger les suivis de fidélisation. Vérifie la table Supabase.")
+    return result
+
+def valider_suivi_fidelisation(data: SuiviFidelisationSchema):
+    if not data.nom.strip():
+        raise HTTPException(status_code=400, detail="Le nom du client est obligatoire.")
+    statuts_valides = {"RI demandé", "RI transmis", "Départ confirmé", "À recontacter", "Client revenu"}
+    if data.statut not in statuts_valides:
+        raise HTTPException(status_code=400, detail="Choisis une étape de suivi valide.")
+    try:
+        datetime.strptime(data.date_demande, "%Y-%m-%d")
+        if data.date_recontact:
+            datetime.strptime(data.date_recontact, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Vérifie les dates renseignées.")
+
+@app.post("/api/fidelisation")
+def create_suivi_fidelisation(data: SuiviFidelisationSchema):
+    valider_suivi_fidelisation(data)
+    ok, detail = add_suivi_fidelisation(data.dict())
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok"}
+
+@app.put("/api/fidelisation/{suivi_id}")
+def modify_suivi_fidelisation(suivi_id: int, data: SuiviFidelisationSchema):
+    valider_suivi_fidelisation(data)
+    ok, detail = update_suivi_fidelisation(suivi_id, data.dict())
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok"}
+
+@app.delete("/api/fidelisation/{suivi_id}")
+def remove_suivi_fidelisation(suivi_id: int):
+    ok, detail = delete_suivi_fidelisation(suivi_id)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok"}
 
 @app.post("/api/rendez-vous-commerciaux/{rendez_vous_id}/comptes-rendus")
 def create_compte_rendu_rendez_vous(rendez_vous_id: int, data: CompteRenduRendezVousSchema):
