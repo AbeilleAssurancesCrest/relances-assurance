@@ -462,10 +462,74 @@
             filter: brightness(0) invert(1);
             cursor: pointer;
         }
+
+        /* Écran affiché pendant le chargement initial des dossiers */
+        #ecranChargement {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: grid;
+            place-items: center;
+            background: rgba(32, 33, 36, 0.96);
+            transition: opacity .35s ease, visibility .35s ease;
+        }
+        #ecranChargement.termine {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .chargement-carte {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .8rem;
+            padding: 2rem 2.5rem;
+            color: var(--chrome-text);
+            text-align: center;
+        }
+        .abeille-vol {
+            width: 120px;
+            height: 72px;
+            animation: abeille-trajectoire 1.8s ease-in-out infinite;
+        }
+        .abeille-aile {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: battement-aile .16s ease-in-out infinite alternate;
+        }
+        @keyframes abeille-trajectoire {
+            0%, 100% { transform: translateX(-15px) translateY(2px) rotate(-5deg); }
+            50% { transform: translateX(15px) translateY(-7px) rotate(5deg); }
+        }
+        @keyframes battement-aile {
+            from { transform: rotate(-18deg) scaleY(.82); }
+            to { transform: rotate(18deg) scaleY(1.08); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .abeille-vol, .abeille-aile { animation: none; }
+            #ecranChargement { transition: none; }
+        }
     </style>
     
 </head>
 <body class="p-3 p-md-4">
+<div id="ecranChargement" role="status" aria-live="polite" aria-label="Chargement de l’application">
+    <div class="chargement-carte">
+        <svg class="abeille-vol" viewBox="0 0 120 72" role="img" aria-label="Une abeille qui vole">
+            <ellipse class="abeille-aile" cx="59" cy="24" rx="12" ry="7" fill="#d9f3ff" fill-opacity=".9" stroke="#a9dff5" stroke-width="1.5" transform="rotate(-28 59 24)" />
+            <ellipse class="abeille-aile" cx="75" cy="25" rx="11" ry="6" fill="#d9f3ff" fill-opacity=".9" stroke="#a9dff5" stroke-width="1.5" transform="rotate(25 75 25)" />
+            <path d="M24 38 C14 33 10 29 8 24 M25 42 C15 43 11 47 8 52" fill="none" stroke="#ffcc00" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 5" />
+            <ellipse cx="64" cy="39" rx="25" ry="16" fill="#ffcc00" stroke="#e0a900" stroke-width="2" />
+            <path d="M55 25 Q51 39 55 53 M68 23 Q64 39 68 55 M81 28 Q77 39 81 50" fill="none" stroke="#292a2d" stroke-width="5" />
+            <circle cx="91" cy="37" r="12" fill="#ffcc00" stroke="#e0a900" stroke-width="2" />
+            <circle cx="95" cy="34" r="2" fill="#202124" />
+            <path d="M102 39 l8 3 -8 3z" fill="#f4a261" />
+            <path d="M88 27 Q91 18 97 20 M96 26 Q102 19 106 22" fill="none" stroke="#292a2d" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+        <div class="fw-google fs-5">Préparation de vos dossiers…</div>
+        <div class="small text-white-50">Votre espace Abeille Assurances arrive</div>
+    </div>
+</div>
 <div class="container-fluid">
     
     <!-- En-tête -->
@@ -1998,7 +2062,9 @@ async function voirHistorique(id) {
 }
 
 reinitialiserFormulaire();
-Promise.all([chargerDossiers(), chargerRendezVousCommerciaux()]);
+Promise.allSettled([chargerDossiers(), chargerRendezVousCommerciaux()]).then(() => {
+    document.getElementById('ecranChargement')?.classList.add('termine');
+});
 </script>
 </body>
 </html>
