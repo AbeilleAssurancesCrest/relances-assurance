@@ -15,6 +15,7 @@ from database import (init_db, add_client_avec_contrats, get_all_clients,
                       update_contrat_details, update_commentaire, update_coordonnees,
                       get_rendez_vous_commerciaux, add_rendez_vous_commercial,
                       update_rendez_vous_commercial, delete_rendez_vous_commercial,
+                      archiver_rendez_vous_commercial,
                       add_compte_rendu_rendez_vous, update_compte_rendu_rendez_vous,
                       delete_compte_rendu_rendez_vous)
 
@@ -90,6 +91,9 @@ class CompteRenduRendezVousSchema(BaseModel):
     compte_rendu: str
     type_echange: str = "Autre"
 
+class ArchivageRendezVousSchema(BaseModel):
+    archive: bool
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
@@ -146,6 +150,13 @@ def remove_rendez_vous_commercial(rendez_vous_id: int):
     if not ok:
         raise HTTPException(status_code=502, detail=detail)
     return {"status": "ok"}
+
+@app.patch("/api/rendez-vous-commerciaux/{rendez_vous_id}/archive")
+def archive_rendez_vous_commercial(rendez_vous_id: int, data: ArchivageRendezVousSchema):
+    ok, detail = archiver_rendez_vous_commercial(rendez_vous_id, data.archive)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "ok", "archive": data.archive}
 
 @app.post("/api/rendez-vous-commerciaux/{rendez_vous_id}/comptes-rendus")
 def create_compte_rendu_rendez_vous(rendez_vous_id: int, data: CompteRenduRendezVousSchema):
